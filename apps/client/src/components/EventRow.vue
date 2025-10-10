@@ -69,7 +69,7 @@
       <!-- Tool info and Summary - Desktop Layout -->
       <div class="flex items-center justify-between mb-2 mobile:hidden">
         <div v-if="toolInfo" class="text-base text-[var(--theme-text-secondary)] font-semibold">
-          <span class="font-medium">{{ toolInfo.tool }}</span>
+          <span class="font-medium italic px-2 py-0.5 rounded border-2 border-[var(--theme-primary)] bg-[var(--theme-primary-light)] shadow-sm">{{ toolInfo.tool }}</span>
           <span v-if="toolInfo.detail" class="ml-2 text-[var(--theme-text-tertiary)]" :class="{ 'italic': event.hook_event_type === 'UserPromptSubmit' }">{{ toolInfo.detail }}</span>
         </div>
         
@@ -85,7 +85,7 @@
       <!-- Tool info and Summary - Mobile Layout -->
       <div class="space-y-2 hidden mobile:block mb-2">
         <div v-if="toolInfo" class="text-sm text-[var(--theme-text-secondary)] font-semibold w-full">
-          <span class="font-medium">{{ toolInfo.tool }}</span>
+          <span class="font-medium italic px-1.5 py-0.5 rounded border-2 border-[var(--theme-primary)] bg-[var(--theme-primary-light)] shadow-sm">{{ toolInfo.tool }}</span>
           <span v-if="toolInfo.detail" class="ml-2 text-[var(--theme-text-tertiary)]" :class="{ 'italic': event.hook_event_type === 'UserPromptSubmit' }">{{ toolInfo.detail }}</span>
         </div>
         
@@ -184,7 +184,8 @@ const hookEmoji = computed(() => {
     'Stop': '🛑',
     'SubagentStop': '👥',
     'PreCompact': '📦',
-    'UserPromptSubmit': '💬'
+    'UserPromptSubmit': '💬',
+    'SessionStart': '🚀'
   };
   return emojiMap[props.event.hook_event_type] || '❓';
 });
@@ -220,6 +221,29 @@ const toolInfo = computed(() => {
     return {
       tool: 'Prompt:',
       detail: `"${payload.prompt.slice(0, 100)}${payload.prompt.length > 100 ? '...' : ''}"`
+    };
+  }
+  
+  // Handle PreCompact events
+  if (props.event.hook_event_type === 'PreCompact') {
+    const trigger = payload.trigger || 'unknown';
+    return {
+      tool: 'Compaction:',
+      detail: trigger === 'manual' ? 'Manual compaction' : 'Auto-compaction (full context)'
+    };
+  }
+  
+  // Handle SessionStart events
+  if (props.event.hook_event_type === 'SessionStart') {
+    const source = payload.source || 'unknown';
+    const sourceLabels: Record<string, string> = {
+      'startup': 'New session',
+      'resume': 'Resuming session',
+      'clear': 'Fresh session'
+    };
+    return {
+      tool: 'Session:',
+      detail: sourceLabels[source] || source
     };
   }
   

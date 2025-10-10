@@ -6,6 +6,8 @@ const eventTypeToEmoji: Record<string, string> = {
   'SubagentStop': '👥',
   'PreCompact': '📦',
   'UserPromptSubmit': '💬',
+  'SessionStart': '🚀',
+  'SessionEnd': '🏁',
   // Default
   'default': '❓'
 };

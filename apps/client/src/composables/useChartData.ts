@@ -197,6 +197,29 @@ export function useChartData() {
     }
   };
   
+  // Compute unique app names within the current time window
+  const uniqueAppNamesInWindow = computed(() => {
+    const now = Date.now();
+    const config = currentConfig.value;
+    const cutoffTime = now - config.duration;
+
+    // Get all unique app names from events in the time window
+    const uniqueApps = new Set<string>();
+
+    allEvents.value.forEach(event => {
+      if (event.timestamp && event.timestamp >= cutoffTime) {
+        uniqueApps.add(event.source_app);
+      }
+    });
+
+    return Array.from(uniqueApps);
+  });
+
+  // Compute unique agent count based on current time window
+  const uniqueAgentCount = computed(() => {
+    return uniqueAppNamesInWindow.value.length;
+  });
+
   return {
     timeRange,
     dataPoints,
@@ -204,6 +227,8 @@ export function useChartData() {
     getChartData,
     setTimeRange,
     cleanup,
-    currentConfig
+    currentConfig,
+    uniqueAgentCount,
+    uniqueAppNamesInWindow
   };
 }

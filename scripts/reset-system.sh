@@ -64,19 +64,19 @@ else
 fi
 
 # Optional: Ask if user wants to clear the database
-echo -e "\n${YELLOW}Database Management${NC}"
-if [ -f "$PROJECT_ROOT/apps/server/events.db" ]; then
-    echo -n "Do you want to clear the event database? (y/N): "
-    read -r response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
-        rm -f "$PROJECT_ROOT/apps/server/events.db"
-        echo -e "${GREEN}✅ Database cleared${NC}"
-    else
-        echo -e "${GREEN}✅ Database preserved${NC}"
-    fi
-else
-    echo -e "${GREEN}✅ No database found${NC}"
-fi
+# echo -e "\n${YELLOW}Database Management${NC}"
+# if [ -f "$PROJECT_ROOT/apps/server/events.db" ]; then
+#     echo -n "Do you want to clear the event database? (y/N): "
+#     read -r response
+#     if [[ "$response" =~ ^[Yy]$ ]]; then
+#         rm -f "$PROJECT_ROOT/apps/server/events.db"
+#         echo -e "${GREEN}✅ Database cleared${NC}"
+#     else
+#         echo -e "${GREEN}✅ Database preserved${NC}"
+#     fi
+# else
+#     echo -e "${GREEN}✅ No database found${NC}"
+# fi
 
 echo -e "\n${GREEN}🎉 System reset complete!${NC}"
 echo -e "\nTo start fresh:"

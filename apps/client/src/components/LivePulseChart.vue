@@ -1,18 +1,30 @@
 <template>
-  <div class="bg-gradient-to-r from-[var(--theme-bg-primary)] to-[var(--theme-bg-secondary)] px-3 py-4 mobile:py-3 shadow-lg">
-    <div class="flex items-center justify-between mb-3 mobile:flex-col mobile:space-y-2 mobile:items-start">
-      <h3 class="text-base mobile:text-sm font-bold text-[var(--theme-primary)] drop-shadow-sm flex items-center">
-        <span class="mr-1.5 text-xl mobile:text-base">📊</span>
-        Live Activity Pulse
-      </h3>
-      <div class="flex gap-1.5 mobile:w-full mobile:justify-center" role="tablist" aria-label="Time range selector">
+  <div class="bg-gradient-to-r from-[var(--theme-bg-primary)] to-[var(--theme-bg-secondary)] px-3 py-4 mobile:py-2 shadow-lg">
+    <div class="flex items-center justify-between mb-3 mobile:mb-2">
+      <div class="flex items-center gap-3 mobile:gap-2">
+        <h3 class="text-base mobile:text-xs font-bold text-[var(--theme-primary)] drop-shadow-sm flex items-center">
+          <span class="mr-1.5 mobile:mr-1 text-xl mobile:text-sm">📊</span>
+          <span class="mobile:hidden">Live Activity Pulse</span>
+        </h3>
+        <button
+          v-if="uniqueAgentCount >= 2"
+          @click="emit('toggleSessionTags')"
+          class="flex items-center gap-1.5 px-2 py-1 bg-[var(--theme-bg-tertiary)] hover:bg-[var(--theme-bg-quaternary)] rounded-lg border border-[var(--theme-border-primary)] hover:border-[var(--theme-primary)] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer transform hover:scale-105"
+          :title="'Click to toggle session tags'"
+        >
+          <span class="text-lg mobile:text-base">👥</span>
+          <span class="text-sm mobile:text-xs font-bold text-[var(--theme-text-primary)]">{{ uniqueAgentCount }}</span>
+          <span class="text-xs mobile:text-[10px] text-[var(--theme-text-tertiary)] font-medium mobile:hidden">agents</span>
+        </button>
+      </div>
+      <div class="flex gap-1.5 mobile:gap-1" role="tablist" aria-label="Time range selector">
         <button
           v-for="(range, index) in timeRanges"
           :key="range"
           @click="setTimeRange(range)"
           @keydown="handleTimeRangeKeyDown($event, index)"
           :class="[
-            'px-3 py-1.5 mobile:px-4 mobile:py-2 text-sm mobile:text-base font-bold rounded-lg transition-all duration-200 min-w-[30px] min-h-[30px] flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105 border',
+            'px-3 py-1.5 mobile:px-2 mobile:py-1 text-sm mobile:text-xs font-bold rounded-lg transition-all duration-200 min-w-[30px] mobile:min-w-[24px] min-h-[30px] mobile:min-h-[24px] flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105 border',
             timeRange === range
               ? 'bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-primary-light)] text-white border-[var(--theme-primary-dark)] drop-shadow-md'
               : 'bg-[var(--theme-bg-tertiary)] text-[var(--theme-text-primary)] border-[var(--theme-border-primary)] hover:bg-[var(--theme-bg-quaternary)] hover:border-[var(--theme-primary)]'
@@ -73,13 +85,15 @@ const props = defineProps<{
   };
 }>();
 
-// const emit = defineEmits<{
-//   eventClick: [event: HookEvent];
-// }>();
+const emit = defineEmits<{
+  toggleSessionTags: [];
+  updateUniqueApps: [appNames: string[]];
+}>();
 
 const canvas = ref<HTMLCanvasElement>();
 const chartContainer = ref<HTMLDivElement>();
-const chartHeight = 96; // Reduced by 33% from 144
+const windowHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 600);
+const chartHeight = computed(() => windowHeight.value <= 400 ? 210 : 96);
 
 const timeRanges: TimeRange[] = ['1m', '3m', '5m'];
 
@@ -89,8 +103,15 @@ const {
   addEvent,
   getChartData,
   setTimeRange,
-  cleanup: cleanupChartData
+  cleanup: cleanupChartData,
+  uniqueAgentCount,
+  uniqueAppNamesInWindow
 } = useChartData();
+
+// Watch uniqueAppNamesInWindow and emit updates
+watch(uniqueAppNamesInWindow, (appNames) => {
+  emit('updateUniqueApps', appNames);
+}, { immediate: true });
 
 let renderer: ReturnType<typeof createChartRenderer> | null = null;
 let resizeObserver: ResizeObserver | null = null;
@@ -140,7 +161,7 @@ const getDimensions = (): ChartDimensions => {
   const width = chartContainer.value?.offsetWidth || 800;
   return {
     width,
-    height: chartHeight,
+    height: chartHeight.value,
     padding: {
       top: 7,
       right: 7,
@@ -186,9 +207,13 @@ const animateNewEvent = (x: number, y: number) => {
   animate();
 };
 
+const handleWindowResize = () => {
+  windowHeight.value = window.innerHeight;
+};
+
 const handleResize = () => {
   if (!renderer || !canvas.value) return;
-  
+
   const dimensions = getDimensions();
   renderer.resize(dimensions);
   render();
@@ -263,6 +288,11 @@ watch(timeRange, () => {
   // Need to re-process all events when time range changes
   // because bucket sizes are different
   render();
+});
+
+// Watch for chart height changes
+watch(chartHeight, () => {
+  handleResize();
 });
 
 const handleMouseMove = (event: MouseEvent) => {
@@ -348,21 +378,24 @@ const themeObserver = new MutationObserver(() => {
 
 onMounted(() => {
   if (!canvas.value || !chartContainer.value) return;
-  
+
   const dimensions = getDimensions();
   const config = getActiveConfig();
-  
+
   renderer = createChartRenderer(canvas.value, dimensions, config);
-  
+
   // Set up resize observer
   resizeObserver = new ResizeObserver(handleResize);
   resizeObserver.observe(chartContainer.value);
-  
+
   // Observe theme changes
   themeObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['class']
   });
+
+  // Listen for window height changes
+  window.addEventListener('resize', handleWindowResize);
   
   // Initial render
   render();
@@ -387,19 +420,22 @@ onMounted(() => {
 
 onUnmounted(() => {
   cleanupChartData();
-  
+
   if (renderer) {
     renderer.stopAnimation();
   }
-  
+
   if (resizeObserver && chartContainer.value) {
     resizeObserver.disconnect();
   }
-  
+
   if (animationFrame) {
     cancelAnimationFrame(animationFrame);
   }
-  
+
   themeObserver.disconnect();
+
+  // Remove window resize listener
+  window.removeEventListener('resize', handleWindowResize);
 });
 </script>

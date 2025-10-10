@@ -9,6 +9,7 @@ export default {
     extend: {
       screens: {
         'mobile': {'max': '699px'}, // Custom mobile breakpoint for < 700px
+        'short': {'raw': '(max-height: 400px)'}, // Custom breakpoint for height <= 400px
       },
       colors: {
         // Theme-aware colors using CSS custom properties

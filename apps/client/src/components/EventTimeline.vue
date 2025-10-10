@@ -5,6 +5,18 @@
       <h2 class="text-2xl mobile:text-lg font-bold text-[var(--theme-primary)] text-center drop-shadow-sm">
         Agent Event Stream
       </h2>
+
+      <!-- Agent/App Tags Row -->
+      <div v-if="showSessionTags && displayedAppNames.length > 0" class="mt-3 flex flex-wrap gap-2 mobile:gap-1.5 justify-start">
+        <span
+          v-for="appName in displayedAppNames"
+          :key="appName"
+          class="text-sm mobile:text-xs font-semibold text-[var(--theme-text-primary)] px-2 mobile:px-1.5 py-0.5 rounded-full border-2 bg-[var(--theme-bg-tertiary)] shadow-md"
+          :style="{ borderColor: getHexColorForApp(appName), backgroundColor: getHexColorForApp(appName) + '33' }"
+        >
+          {{ appName }}
+        </span>
+      </div>
     </div>
     
     <!-- Scrollable Event List -->
@@ -53,6 +65,8 @@ const props = defineProps<{
     eventType: string;
   };
   stickToBottom: boolean;
+  showSessionTags?: boolean;
+  uniqueAppNames?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -60,7 +74,12 @@ const emit = defineEmits<{
 }>();
 
 const scrollContainer = ref<HTMLElement>();
-const { getGradientForSession, getColorForSession, getGradientForApp, getColorForApp, getHexColorForApp } = useEventColors();
+const { getGradientForSession, getColorForSession, getGradientForApp, getColorForApp, getHexColorForApp, getHexColorForSession } = useEventColors();
+
+// Use passed unique app names (from time window in LivePulseChart)
+const displayedAppNames = computed(() => {
+  return props.uniqueAppNames || [];
+});
 
 const filteredEvents = computed(() => {
   return props.events.filter(event => {

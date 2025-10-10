@@ -83,7 +83,7 @@ To integrate the observability hooks into your projects:
            }
          ]
        }]
-       // ... (similar patterns for Notification, Stop, SubagentStop, PreCompact)
+       // ... (similar patterns for Notification, Stop, SubagentStop, PreCompact, SessionStart, SessionEnd)
      }
    }
    ```
@@ -192,6 +192,9 @@ The hook system intercepts Claude Code lifecycle events:
   - `user_prompt_submit.py`: Logs user prompts, supports validation (v1.0.54+)
   - `stop.py`: Records session completion with optional chat history
   - `subagent_stop.py`: Monitors subagent task completion
+  - `pre_compact.py`: Tracks context compaction operations (manual/auto)
+  - `session_start.py`: Logs session start, can load development context
+  - `session_end.py`: Logs session end, saves session statistics
 
 ### 2. Server (`apps/server/`)
 
@@ -249,15 +252,17 @@ Vue 3 application with real-time visualization:
 
 ## 🎨 Event Types & Visualization
 
-| Event Type   | Emoji | Purpose               | Color Coding  | Special Display |
-| ------------ | ----- | --------------------- | ------------- | --------------- |
-| PreToolUse   | 🔧     | Before tool execution | Session-based | Tool name & details |
-| PostToolUse  | ✅     | After tool completion | Session-based | Tool name & results |
-| Notification | 🔔     | User interactions     | Session-based | Notification message |
-| Stop         | 🛑     | Response completion   | Session-based | Summary & chat transcript |
-| SubagentStop | 👥     | Subagent finished     | Session-based | Subagent details |
-| PreCompact   | 📦     | Context compaction    | Session-based | Compaction details |
-| UserPromptSubmit | 💬 | User prompt submission | Session-based | Prompt: _"user message"_ (italic) |
+| Event Type       | Emoji | Purpose                | Color Coding  | Special Display                       |
+| ---------------- | ----- | ---------------------- | ------------- | ------------------------------------- |
+| PreToolUse       | 🔧     | Before tool execution  | Session-based | Tool name & details                   |
+| PostToolUse      | ✅     | After tool completion  | Session-based | Tool name & results                   |
+| Notification     | 🔔     | User interactions      | Session-based | Notification message                  |
+| Stop             | 🛑     | Response completion    | Session-based | Summary & chat transcript             |
+| SubagentStop     | 👥     | Subagent finished      | Session-based | Subagent details                      |
+| PreCompact       | 📦     | Context compaction     | Session-based | Compaction details                    |
+| UserPromptSubmit | 💬     | User prompt submission | Session-based | Prompt: _"user message"_ (italic)     |
+| SessionStart     | 🚀     | Session started        | Session-based | Session source (startup/resume/clear) |
+| SessionEnd       | 🏁     | Session ended          | Session-based | End reason (clear/logout/exit/other)  |
 
 ### UserPromptSubmit Event (v1.0.54+)
 
@@ -378,9 +383,10 @@ This command will:
 
 This ensures your hooks work correctly regardless of where Claude Code is executed from.
 
-## Master AI Coding
-> And prepare for Agentic Engineering
+## Master AI **Agentic Coding**
+> And prepare for the future of software engineering
 
-Learn to code with AI with foundational [Principles of AI Coding](https://agenticengineer.com/principled-ai-coding?y=cchookobvs)
+Learn tactical agentic coding patterns with [Tactical Agentic Coding](https://agenticengineer.com/tactical-agentic-coding)
 
-Follow the [IndyDevDan youtube channel](https://www.youtube.com/@indydevdan) for more AI coding tips and tricks.
+Follow the [IndyDevDan YouTube channel](https://www.youtube.com/@indydevdan) to improve your agentic coding advantage.
+
