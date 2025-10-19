@@ -85,10 +85,15 @@ export function useWebSocket(url: string) {
   onUnmounted(() => {
     disconnect();
   });
-  
+
+  const clearEvents = () => {
+    events.value = [];
+  };
+
   return {
     events,
     isConnected,
-    error
+    error,
+    clearEvents
   };
 }

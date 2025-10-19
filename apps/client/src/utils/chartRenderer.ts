@@ -119,6 +119,8 @@ export class ChartRenderer {
         return ['3m', '2m', '1m', 'now'];
       case '5m':
         return ['5m', '4m', '3m', '2m', '1m', 'now'];
+      case '10m':
+        return ['10m', '8m', '6m', '4m', '2m', 'now'];
       default:
         return [];
     }

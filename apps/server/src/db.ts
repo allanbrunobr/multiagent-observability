@@ -31,11 +31,29 @@ export function initDatabase(): void {
     if (!hasChatColumn) {
       db.exec('ALTER TABLE events ADD COLUMN chat TEXT');
     }
-    
+
     // Check if summary column exists, add it if not (for migration)
     const hasSummaryColumn = columns.some((col: any) => col.name === 'summary');
     if (!hasSummaryColumn) {
       db.exec('ALTER TABLE events ADD COLUMN summary TEXT');
+    }
+
+    // Check if humanInTheLoop column exists, add it if not (for migration)
+    const hasHumanInTheLoopColumn = columns.some((col: any) => col.name === 'humanInTheLoop');
+    if (!hasHumanInTheLoopColumn) {
+      db.exec('ALTER TABLE events ADD COLUMN humanInTheLoop TEXT');
+    }
+
+    // Check if humanInTheLoopStatus column exists, add it if not (for migration)
+    const hasHumanInTheLoopStatusColumn = columns.some((col: any) => col.name === 'humanInTheLoopStatus');
+    if (!hasHumanInTheLoopStatusColumn) {
+      db.exec('ALTER TABLE events ADD COLUMN humanInTheLoopStatus TEXT');
+    }
+
+    // Check if model_name column exists, add it if not (for migration)
+    const hasModelNameColumn = columns.some((col: any) => col.name === 'model_name');
+    if (!hasModelNameColumn) {
+      db.exec('ALTER TABLE events ADD COLUMN model_name TEXT');
     }
   } catch (error) {
     // If the table doesn't exist yet, the CREATE TABLE above will handle it
@@ -106,11 +124,18 @@ export function initDatabase(): void {
 
 export function insertEvent(event: HookEvent): HookEvent {
   const stmt = db.prepare(`
-    INSERT INTO events (source_app, session_id, hook_event_type, payload, chat, summary, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO events (source_app, session_id, hook_event_type, payload, chat, summary, timestamp, humanInTheLoop, humanInTheLoopStatus, model_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  
+
   const timestamp = event.timestamp || Date.now();
+
+  // Initialize humanInTheLoopStatus to pending if humanInTheLoop exists
+  let humanInTheLoopStatus = event.humanInTheLoopStatus;
+  if (event.humanInTheLoop && !humanInTheLoopStatus) {
+    humanInTheLoopStatus = { status: 'pending' };
+  }
+
   const result = stmt.run(
     event.source_app,
     event.session_id,
@@ -118,13 +143,17 @@ export function insertEvent(event: HookEvent): HookEvent {
     JSON.stringify(event.payload),
     event.chat ? JSON.stringify(event.chat) : null,
     event.summary || null,
-    timestamp
+    timestamp,
+    event.humanInTheLoop ? JSON.stringify(event.humanInTheLoop) : null,
+    humanInTheLoopStatus ? JSON.stringify(humanInTheLoopStatus) : null,
+    event.model_name || null
   );
-  
+
   return {
     ...event,
     id: result.lastInsertRowid as number,
-    timestamp
+    timestamp,
+    humanInTheLoopStatus
   };
 }
 
@@ -142,14 +171,14 @@ export function getFilterOptions(): FilterOptions {
 
 export function getRecentEvents(limit: number = 100): HookEvent[] {
   const stmt = db.prepare(`
-    SELECT id, source_app, session_id, hook_event_type, payload, chat, summary, timestamp
+    SELECT id, source_app, session_id, hook_event_type, payload, chat, summary, timestamp, humanInTheLoop, humanInTheLoopStatus, model_name
     FROM events
     ORDER BY timestamp DESC
     LIMIT ?
   `);
-  
+
   const rows = stmt.all(limit) as any[];
-  
+
   return rows.map(row => ({
     id: row.id,
     source_app: row.source_app,
@@ -158,7 +187,10 @@ export function getRecentEvents(limit: number = 100): HookEvent[] {
     payload: JSON.parse(row.payload),
     chat: row.chat ? JSON.parse(row.chat) : undefined,
     summary: row.summary || undefined,
-    timestamp: row.timestamp
+    timestamp: row.timestamp,
+    humanInTheLoop: row.humanInTheLoop ? JSON.parse(row.humanInTheLoop) : undefined,
+    humanInTheLoopStatus: row.humanInTheLoopStatus ? JSON.parse(row.humanInTheLoopStatus) : undefined,
+    model_name: row.model_name || undefined
   })).reverse();
 }
 
@@ -316,3 +348,40 @@ export function incrementThemeDownloadCount(id: string): boolean {
   const result = stmt.run(id);
   return result.changes > 0;
 }
+
+// HITL helper functions
+export function updateEventHITLResponse(id: number, response: any): HookEvent | null {
+  const status = {
+    status: 'responded',
+    respondedAt: response.respondedAt,
+    response
+  };
+
+  const stmt = db.prepare('UPDATE events SET humanInTheLoopStatus = ? WHERE id = ?');
+  stmt.run(JSON.stringify(status), id);
+
+  const selectStmt = db.prepare(`
+    SELECT id, source_app, session_id, hook_event_type, payload, chat, summary, timestamp, humanInTheLoop, humanInTheLoopStatus, model_name
+    FROM events
+    WHERE id = ?
+  `);
+  const row = selectStmt.get(id) as any;
+
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    source_app: row.source_app,
+    session_id: row.session_id,
+    hook_event_type: row.hook_event_type,
+    payload: JSON.parse(row.payload),
+    chat: row.chat ? JSON.parse(row.chat) : undefined,
+    summary: row.summary || undefined,
+    timestamp: row.timestamp,
+    humanInTheLoop: row.humanInTheLoop ? JSON.parse(row.humanInTheLoop) : undefined,
+    humanInTheLoopStatus: row.humanInTheLoopStatus ? JSON.parse(row.humanInTheLoopStatus) : undefined,
+    model_name: row.model_name || undefined
+  };
+}
+
+export { db };

@@ -20,6 +20,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime
 from utils.summarizer import generate_event_summary
+from utils.model_extractor import get_model_from_transcript
 
 def send_event_to_server(event_data, server_url='http://localhost:4000/events'):
     """Send event data to the observability server."""
@@ -67,13 +68,21 @@ def main():
         print(f"Failed to parse JSON input: {e}", file=sys.stderr)
         sys.exit(1)
     
+    # Extract model name from transcript (with caching)
+    session_id = input_data.get('session_id', 'unknown')
+    transcript_path = input_data.get('transcript_path', '')
+    model_name = ''
+    if transcript_path:
+        model_name = get_model_from_transcript(session_id, transcript_path)
+
     # Prepare event data for server
     event_data = {
         'source_app': args.source_app,
-        'session_id': input_data.get('session_id', 'unknown'),
+        'session_id': session_id,
         'hook_event_type': args.event_type,
         'payload': input_data,
-        'timestamp': int(datetime.now().timestamp() * 1000)
+        'timestamp': int(datetime.now().timestamp() * 1000),
+        'model_name': model_name
     }
     
     # Handle --add-chat option

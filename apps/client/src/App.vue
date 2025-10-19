@@ -33,6 +33,15 @@
             {{ events.length }}
           </span>
 
+          <!-- Clear Button -->
+          <button
+            @click="handleClearClick"
+            class="p-3 mobile:p-1 rounded-lg bg-white/20 hover:bg-white/30 transition-all duration-200 border border-white/30 hover:border-white/50 backdrop-blur-sm shadow-lg hover:shadow-xl"
+            title="Clear events"
+          >
+            <span class="text-2xl mobile:text-base">🗑️</span>
+          </button>
+
           <!-- Filters Toggle Button -->
           <button
             @click="showFilters = !showFilters"
@@ -66,18 +75,32 @@
     <LivePulseChart
       :events="events"
       :filters="filters"
-      @toggle-session-tags="showSessionTags = !showSessionTags"
       @update-unique-apps="uniqueAppNames = $event"
+      @update-all-apps="allAppNames = $event"
+      @update-time-range="currentTimeRange = $event"
     />
+
+    <!-- Agent Swim Lane Container (below pulse chart, full width, hidden when empty) -->
+    <div v-if="selectedAgentLanes.length > 0" class="w-full bg-[var(--theme-bg-secondary)] px-3 py-4 mobile:px-2 mobile:py-2 overflow-hidden">
+      <AgentSwimLaneContainer
+        :selected-agents="selectedAgentLanes"
+        :events="events"
+        :time-range="currentTimeRange"
+        @update:selected-agents="selectedAgentLanes = $event"
+      />
+    </div>
     
     <!-- Timeline -->
-    <EventTimeline
-      :events="events"
-      :filters="filters"
-      :show-session-tags="showSessionTags"
-      :unique-app-names="uniqueAppNames"
-      v-model:stick-to-bottom="stickToBottom"
-    />
+    <div class="flex flex-col flex-1 overflow-hidden">
+      <EventTimeline
+        :events="events"
+        :filters="filters"
+        :unique-app-names="uniqueAppNames"
+        :all-app-names="allAppNames"
+        v-model:stick-to-bottom="stickToBottom"
+        @select-agent="toggleAgentLane"
+      />
+    </div>
     
     <!-- Stick to bottom button -->
     <StickScrollButton
@@ -113,7 +136,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, watch } from 'vue';
+import type { TimeRange } from './types';
 import { useWebSocket } from './composables/useWebSocket';
 import { useThemes } from './composables/useThemes';
 import { useEventColors } from './composables/useEventColors';
@@ -123,12 +147,13 @@ import StickScrollButton from './components/StickScrollButton.vue';
 import LivePulseChart from './components/LivePulseChart.vue';
 import ThemeManager from './components/ThemeManager.vue';
 import ToastNotification from './components/ToastNotification.vue';
+import AgentSwimLaneContainer from './components/AgentSwimLaneContainer.vue';
 
 // WebSocket connection
-const { events, isConnected, error } = useWebSocket('ws://localhost:4000/stream');
+const { events, isConnected, error, clearEvents } = useWebSocket('ws://localhost:4000/stream');
 
-// Theme management
-const { state: themeState } = useThemes();
+// Theme management (sets up theme system)
+useThemes();
 
 // Event colors
 const { getHexColorForApp } = useEventColors();
@@ -144,8 +169,10 @@ const filters = ref({
 const stickToBottom = ref(true);
 const showThemeManager = ref(false);
 const showFilters = ref(false);
-const showSessionTags = ref(true); // Default to open
-const uniqueAppNames = ref<string[]>([]);
+const uniqueAppNames = ref<string[]>([]); // Apps active in current time window
+const allAppNames = ref<string[]>([]); // All apps ever seen in session
+const selectedAgentLanes = ref<string[]>([]);
+const currentTimeRange = ref<TimeRange>('1m'); // Current time range from LivePulseChart
 
 // Toast notifications
 interface Toast {
@@ -157,15 +184,8 @@ const toasts = ref<Toast[]>([]);
 let toastIdCounter = 0;
 const seenAgents = new Set<string>();
 
-// Watch uniqueAppNames and hide tags if count drops below 2
-watch(() => uniqueAppNames.value.length, (count) => {
-  if (count < 2 && showSessionTags.value) {
-    showSessionTags.value = false;
-  }
-});
-
 // Watch for new agents and show toast
-watch(uniqueAppNames, (newAppNames, oldAppNames) => {
+watch(uniqueAppNames, (newAppNames) => {
   // Find agents that are new (not in seenAgents set)
   newAppNames.forEach(appName => {
     if (!seenAgents.has(appName)) {
@@ -188,12 +208,23 @@ const dismissToast = (id: number) => {
   }
 };
 
-// Computed properties
-const isDark = computed(() => {
-  return themeState.value.currentTheme === 'dark' || 
-         (themeState.value.isCustomTheme && 
-          themeState.value.customThemes.find(t => t.id === themeState.value.currentTheme)?.name.includes('dark'));
-});
+// Handle agent tag clicks for swim lanes
+const toggleAgentLane = (agentName: string) => {
+  const index = selectedAgentLanes.value.indexOf(agentName);
+  if (index >= 0) {
+    // Remove from comparison
+    selectedAgentLanes.value.splice(index, 1);
+  } else {
+    // Add to comparison
+    selectedAgentLanes.value.push(agentName);
+  }
+};
+
+// Handle clear button click
+const handleClearClick = () => {
+  clearEvents();
+  selectedAgentLanes.value = [];
+};
 
 // Debug handler for theme manager
 const handleThemeManagerClick = () => {

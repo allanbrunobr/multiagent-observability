@@ -1,5 +1,5 @@
-import { initDatabase, insertEvent, getFilterOptions, getRecentEvents } from './db';
-import type { HookEvent } from './types';
+import { initDatabase, insertEvent, getFilterOptions, getRecentEvents, updateEventHITLResponse } from './db';
+import type { HookEvent, HumanInTheLoopResponse } from './types';
 import { 
   createTheme, 
   updateThemeById, 
@@ -16,6 +16,90 @@ initDatabase();
 
 // Store WebSocket clients
 const wsClients = new Set<any>();
+
+// Helper function to send response to agent via WebSocket
+async function sendResponseToAgent(
+  wsUrl: string,
+  response: HumanInTheLoopResponse
+): Promise<void> {
+  console.log(`[HITL] Connecting to agent WebSocket: ${wsUrl}`);
+
+  return new Promise((resolve, reject) => {
+    let ws: WebSocket | null = null;
+    let isResolved = false;
+
+    const cleanup = () => {
+      if (ws) {
+        try {
+          ws.close();
+        } catch (e) {
+          // Ignore close errors
+        }
+      }
+    };
+
+    try {
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        if (isResolved) return;
+        console.log('[HITL] WebSocket connection opened, sending response...');
+
+        try {
+          ws!.send(JSON.stringify(response));
+          console.log('[HITL] Response sent successfully');
+
+          // Wait longer to ensure message fully transmits before closing
+          setTimeout(() => {
+            cleanup();
+            if (!isResolved) {
+              isResolved = true;
+              resolve();
+            }
+          }, 500);
+        } catch (error) {
+          console.error('[HITL] Error sending message:', error);
+          cleanup();
+          if (!isResolved) {
+            isResolved = true;
+            reject(error);
+          }
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('[HITL] WebSocket error:', error);
+        cleanup();
+        if (!isResolved) {
+          isResolved = true;
+          reject(error);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('[HITL] WebSocket connection closed');
+      };
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        if (!isResolved) {
+          console.error('[HITL] Timeout sending response to agent');
+          cleanup();
+          isResolved = true;
+          reject(new Error('Timeout sending response to agent'));
+        }
+      }, 5000);
+
+    } catch (error) {
+      console.error('[HITL] Error creating WebSocket:', error);
+      cleanup();
+      if (!isResolved) {
+        isResolved = true;
+        reject(error);
+      }
+    }
+  });
+}
 
 // Create Bun server with HTTP and WebSocket support
 const server = Bun.serve({
@@ -91,7 +175,60 @@ const server = Bun.serve({
         headers: { ...headers, 'Content-Type': 'application/json' }
       });
     }
-    
+
+    // POST /events/:id/respond - Respond to HITL request
+    if (url.pathname.match(/^\/events\/\d+\/respond$/) && req.method === 'POST') {
+      const id = parseInt(url.pathname.split('/')[2]);
+
+      try {
+        const response: HumanInTheLoopResponse = await req.json();
+        response.respondedAt = Date.now();
+
+        // Update event in database
+        const updatedEvent = updateEventHITLResponse(id, response);
+
+        if (!updatedEvent) {
+          return new Response(JSON.stringify({ error: 'Event not found' }), {
+            status: 404,
+            headers: { ...headers, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Send response to agent via WebSocket
+        if (updatedEvent.humanInTheLoop?.responseWebSocketUrl) {
+          try {
+            await sendResponseToAgent(
+              updatedEvent.humanInTheLoop.responseWebSocketUrl,
+              response
+            );
+          } catch (error) {
+            console.error('Failed to send response to agent:', error);
+            // Don't fail the request if we can't reach the agent
+          }
+        }
+
+        // Broadcast updated event to all connected clients
+        const message = JSON.stringify({ type: 'event', data: updatedEvent });
+        wsClients.forEach(client => {
+          try {
+            client.send(message);
+          } catch (err) {
+            wsClients.delete(client);
+          }
+        });
+
+        return new Response(JSON.stringify(updatedEvent), {
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Error processing HITL response:', error);
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+          status: 400,
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Theme API endpoints
     
     // POST /api/themes - Create a new theme

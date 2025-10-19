@@ -1,3 +1,30 @@
+// New interface for human-in-the-loop requests
+export interface HumanInTheLoop {
+  question: string;
+  responseWebSocketUrl: string;
+  type: 'question' | 'permission' | 'choice';
+  choices?: string[]; // For multiple choice questions
+  timeout?: number; // Optional timeout in seconds
+  requiresResponse?: boolean; // Whether response is required or optional
+}
+
+// Response interface
+export interface HumanInTheLoopResponse {
+  response?: string;
+  permission?: boolean;
+  choice?: string; // Selected choice from options
+  hookEvent: HookEvent;
+  respondedAt: number;
+  respondedBy?: string; // Optional user identifier
+}
+
+// Status tracking interface
+export interface HumanInTheLoopStatus {
+  status: 'pending' | 'responded' | 'timeout' | 'error';
+  respondedAt?: number;
+  response?: HumanInTheLoopResponse;
+}
+
 export interface HookEvent {
   id?: number;
   source_app: string;
@@ -7,6 +34,11 @@ export interface HookEvent {
   chat?: any[];
   summary?: string;
   timestamp?: number;
+  model_name?: string;
+
+  // NEW: Optional HITL data
+  humanInTheLoop?: HumanInTheLoop;
+  humanInTheLoopStatus?: HumanInTheLoopStatus;
 }
 
 export interface FilterOptions {

@@ -7,15 +7,63 @@
       </h2>
 
       <!-- Agent/App Tags Row -->
-      <div v-if="showSessionTags && displayedAppNames.length > 0" class="mt-3 flex flex-wrap gap-2 mobile:gap-1.5 justify-start">
-        <span
-          v-for="appName in displayedAppNames"
-          :key="appName"
-          class="text-sm mobile:text-xs font-semibold text-[var(--theme-text-primary)] px-2 mobile:px-1.5 py-0.5 rounded-full border-2 bg-[var(--theme-bg-tertiary)] shadow-md"
-          :style="{ borderColor: getHexColorForApp(appName), backgroundColor: getHexColorForApp(appName) + '33' }"
+      <div v-if="displayedAgentIds.length > 0" class="mt-3 flex flex-wrap gap-2 mobile:gap-1.5 justify-start">
+        <button
+          v-for="agentId in displayedAgentIds"
+          :key="agentId"
+          @click="emit('selectAgent', agentId)"
+          :class="[
+            'text-base mobile:text-sm font-bold px-3 mobile:px-2 py-1 rounded-full border-2 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 cursor-pointer',
+            isAgentActive(agentId)
+              ? 'text-[var(--theme-text-primary)] bg-[var(--theme-bg-tertiary)]'
+              : 'text-[var(--theme-text-tertiary)] bg-[var(--theme-bg-tertiary)] opacity-50 hover:opacity-75'
+          ]"
+          :style="{
+            borderColor: getHexColorForApp(getAppNameFromAgentId(agentId)),
+            backgroundColor: getHexColorForApp(getAppNameFromAgentId(agentId)) + (isAgentActive(agentId) ? '33' : '1a')
+          }"
+          :title="`${isAgentActive(agentId) ? 'Active: Click to add' : 'Sleeping: No recent events. Click to add'} ${agentId} to comparison lanes`"
         >
-          {{ appName }}
-        </span>
+          <span class="mr-2">{{ isAgentActive(agentId) ? '✨' : '😴' }}</span>
+          <span class="font-mono text-sm">{{ agentId }}</span>
+        </button>
+      </div>
+
+      <!-- Search Bar -->
+      <div class="mt-3 mobile:mt-2 w-full">
+        <div class="flex items-center gap-2 mobile:gap-1">
+          <div class="relative flex-1">
+            <input
+              type="text"
+              :value="searchPattern"
+              @input="updateSearchPattern(($event.target as HTMLInputElement).value)"
+              placeholder="Search events (regex enabled)... e.g., 'tool.*error' or '^GET'"
+              :class="[
+                'w-full px-3 mobile:px-2 py-2 mobile:py-1.5 rounded-lg text-sm mobile:text-xs font-mono border-2 transition-all duration-200',
+                'bg-[var(--theme-bg-tertiary)] text-[var(--theme-text-primary)] placeholder-[var(--theme-text-quaternary)]',
+                'border-[var(--theme-border-primary)] focus:border-[var(--theme-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/20',
+                searchError ? 'border-[var(--theme-accent-error)]' : ''
+              ]"
+              aria-label="Search events with regex pattern"
+            />
+            <button
+              v-if="searchPattern"
+              @click="clearSearch"
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--theme-text-tertiary)] hover:text-[var(--theme-primary)] transition-colors duration-200"
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+        <div
+          v-if="searchError"
+          class="mt-1.5 mobile:mt-1 px-2 py-1.5 mobile:py-1 bg-[var(--theme-accent-error)]/10 border border-[var(--theme-accent-error)] rounded-lg text-xs mobile:text-[11px] text-[var(--theme-accent-error)] font-semibold"
+          role="alert"
+        >
+          <span class="inline-block mr-1">⚠️</span> {{ searchError }}
+        </div>
       </div>
     </div>
     
@@ -56,6 +104,7 @@ import { ref, computed, watch, nextTick } from 'vue';
 import type { HookEvent } from '../types';
 import EventRow from './EventRow.vue';
 import { useEventColors } from '../composables/useEventColors';
+import { useEventSearch } from '../composables/useEventSearch';
 
 const props = defineProps<{
   events: HookEvent[];
@@ -65,24 +114,36 @@ const props = defineProps<{
     eventType: string;
   };
   stickToBottom: boolean;
-  showSessionTags?: boolean;
-  uniqueAppNames?: string[];
+  uniqueAppNames?: string[]; // Agent IDs (app:session) active in current time window
+  allAppNames?: string[]; // All agent IDs (app:session) ever seen in session
 }>();
 
 const emit = defineEmits<{
   'update:stickToBottom': [value: boolean];
+  selectAgent: [agentName: string];
 }>();
 
 const scrollContainer = ref<HTMLElement>();
-const { getGradientForSession, getColorForSession, getGradientForApp, getColorForApp, getHexColorForApp, getHexColorForSession } = useEventColors();
+const { getGradientForSession, getColorForSession, getGradientForApp, getColorForApp, getHexColorForApp } = useEventColors();
+const { searchPattern, searchError, searchEvents, updateSearchPattern, clearSearch } = useEventSearch();
 
-// Use passed unique app names (from time window in LivePulseChart)
-const displayedAppNames = computed(() => {
-  return props.uniqueAppNames || [];
+// Use all agent IDs, preferring allAppNames if available (all ever seen), fallback to uniqueAppNames (active in time window)
+const displayedAgentIds = computed(() => {
+  return props.allAppNames?.length ? props.allAppNames : (props.uniqueAppNames || []);
 });
 
+// Extract app name from agent ID (format: "app:session")
+const getAppNameFromAgentId = (agentId: string): string => {
+  return agentId.split(':')[0];
+};
+
+// Check if an agent is currently active (has events in the current time window)
+const isAgentActive = (agentId: string): boolean => {
+  return (props.uniqueAppNames || []).includes(agentId);
+};
+
 const filteredEvents = computed(() => {
-  return props.events.filter(event => {
+  let filtered = props.events.filter(event => {
     if (props.filters.sourceApp && event.source_app !== props.filters.sourceApp) {
       return false;
     }
@@ -94,6 +155,13 @@ const filteredEvents = computed(() => {
     }
     return true;
   });
+
+  // Apply regex search filter
+  if (searchPattern.value) {
+    filtered = searchEvents(filtered, searchPattern.value);
+  }
+
+  return filtered;
 });
 
 const scrollToBottom = () => {

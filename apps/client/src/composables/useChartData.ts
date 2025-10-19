@@ -1,9 +1,20 @@
 import { ref, computed } from 'vue';
 import type { HookEvent, ChartDataPoint, TimeRange } from '../types';
 
-export function useChartData() {
+export function useChartData(agentIdFilter?: string) {
   const timeRange = ref<TimeRange>('1m');
   const dataPoints = ref<ChartDataPoint[]>([]);
+
+  // Parse agent ID filter (format: "app:session")
+  const parseAgentId = (agentId: string): { app: string; session: string } | null => {
+    const parts = agentId.split(':');
+    if (parts.length === 2) {
+      return { app: parts[0], session: parts[1] };
+    }
+    return null;
+  };
+
+  const agentIdParsed = agentIdFilter ? parseAgentId(agentIdFilter) : null;
   
   // Store all events for re-aggregation when time range changes
   const allEvents = ref<HookEvent[]>([]);
@@ -28,6 +39,11 @@ export function useChartData() {
       duration: 5 * 60 * 1000, // 5 minutes in ms
       bucketSize: 5000, // 5 second buckets
       maxPoints: 60
+    },
+    '10m': {
+      duration: 10 * 60 * 1000, // 10 minutes in ms
+      bucketSize: 10000, // 10 second buckets
+      maxPoints: 60
     }
   };
   
@@ -41,15 +57,26 @@ export function useChartData() {
   const processEventBuffer = () => {
     const eventsToProcess = [...eventBuffer];
     eventBuffer = [];
-    
+
     // Add events to our complete list
     allEvents.value.push(...eventsToProcess);
-    
+
     eventsToProcess.forEach(event => {
       if (!event.timestamp) return;
-      
+
+      // Skip if event doesn't match agent ID filter (check both app and session)
+      if (agentIdParsed) {
+        if (event.source_app !== agentIdParsed.app) {
+          return;
+        }
+        // Check if session ID matches (first 8 chars)
+        if (event.session_id.slice(0, 8) !== agentIdParsed.session) {
+          return;
+        }
+      }
+
       const bucketTime = getBucketTimestamp(event.timestamp);
-      
+
       // Find existing bucket or create new one
       let bucket = dataPoints.value.find(dp => dp.timestamp === bucketTime);
       if (bucket) {
@@ -73,7 +100,7 @@ export function useChartData() {
         });
       }
     });
-    
+
     // Clean old data once after processing all events
     cleanOldData();
     cleanOldEvents();
@@ -146,22 +173,29 @@ export function useChartData() {
   const reaggregateData = () => {
     // Clear current data points
     dataPoints.value = [];
-    
+
     // Re-process all events with new bucket size
     const now = Date.now();
     const cutoffTime = now - currentConfig.value.duration;
-    
-    // Filter events within the time range
-    const relevantEvents = allEvents.value.filter(event => 
+
+    // Filter events within the time range and by agent ID if specified
+    let relevantEvents = allEvents.value.filter(event =>
       event.timestamp && event.timestamp >= cutoffTime
     );
-    
+
+    if (agentIdParsed) {
+      relevantEvents = relevantEvents.filter(event =>
+        event.source_app === agentIdParsed.app &&
+        event.session_id.slice(0, 8) === agentIdParsed.session
+      );
+    }
+
     // Re-aggregate all relevant events
     relevantEvents.forEach(event => {
       if (!event.timestamp) return;
-      
+
       const bucketTime = getBucketTimestamp(event.timestamp);
-      
+
       // Find existing bucket or create new one
       let bucket = dataPoints.value.find(dp => dp.timestamp === bucketTime);
       if (bucket) {
@@ -177,7 +211,7 @@ export function useChartData() {
         });
       }
     });
-    
+
     // Clean up
     cleanOldData();
   };
@@ -196,28 +230,99 @@ export function useChartData() {
       processEventBuffer(); // Process any remaining events
     }
   };
+
+  // Clear all data (for when user clicks clear button)
+  const clearData = () => {
+    dataPoints.value = [];
+    allEvents.value = [];
+    eventBuffer = [];
+    if (debounceTimer !== null) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+  };
   
-  // Compute unique app names within the current time window
-  const uniqueAppNamesInWindow = computed(() => {
+  // Helper to create unique agent ID from source_app + session_id
+  const createAgentId = (sourceApp: string, sessionId: string): string => {
+    return `${sourceApp}:${sessionId.slice(0, 8)}`;
+  };
+
+  // Compute unique agent IDs (source_app:session_id) within the current time window
+  const uniqueAgentIdsInWindow = computed(() => {
     const now = Date.now();
     const config = currentConfig.value;
     const cutoffTime = now - config.duration;
 
-    // Get all unique app names from events in the time window
-    const uniqueApps = new Set<string>();
+    // Get all unique (source_app, session_id) combos from events in the time window
+    const uniqueAgents = new Set<string>();
 
     allEvents.value.forEach(event => {
       if (event.timestamp && event.timestamp >= cutoffTime) {
-        uniqueApps.add(event.source_app);
+        const agentId = createAgentId(event.source_app, event.session_id);
+        uniqueAgents.add(agentId);
       }
     });
 
-    return Array.from(uniqueApps);
+    return Array.from(uniqueAgents);
+  });
+
+  // Compute ALL unique agent IDs ever seen in the session (not just in current window)
+  const allUniqueAgentIds = computed(() => {
+    const uniqueAgents = new Set<string>();
+
+    allEvents.value.forEach(event => {
+      const agentId = createAgentId(event.source_app, event.session_id);
+      uniqueAgents.add(agentId);
+    });
+
+    return Array.from(uniqueAgents);
   });
 
   // Compute unique agent count based on current time window
   const uniqueAgentCount = computed(() => {
-    return uniqueAppNamesInWindow.value.length;
+    return uniqueAgentIdsInWindow.value.length;
+  });
+
+  // Compute total tool calls (PreToolUse events) based on current time window
+  const toolCallCount = computed(() => {
+    return dataPoints.value.reduce((sum, dp) => {
+      return sum + (dp.eventTypes?.['PreToolUse'] || 0);
+    }, 0);
+  });
+
+  // Compute event timing metrics (min, max, average gap between events in ms)
+  const eventTimingMetrics = computed(() => {
+    const now = Date.now();
+    const config = currentConfig.value;
+    const cutoffTime = now - config.duration;
+
+    // Get all events in current time window, sorted by timestamp
+    const windowEvents = allEvents.value
+      .filter(e => e.timestamp && e.timestamp >= cutoffTime)
+      .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    if (windowEvents.length < 2) {
+      return { minGap: 0, maxGap: 0, avgGap: 0 };
+    }
+
+    // Calculate gaps between consecutive events
+    const gaps: number[] = [];
+    for (let i = 1; i < windowEvents.length; i++) {
+      const gap = (windowEvents[i].timestamp || 0) - (windowEvents[i - 1].timestamp || 0);
+      if (gap > 0) {
+        gaps.push(gap);
+      }
+    }
+
+    if (gaps.length === 0) {
+      return { minGap: 0, maxGap: 0, avgGap: 0 };
+    }
+
+    const minGap = Math.min(...gaps);
+    const maxGap = Math.max(...gaps);
+    const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+
+    return { minGap, maxGap, avgGap };
   });
 
   return {
@@ -227,8 +332,12 @@ export function useChartData() {
     getChartData,
     setTimeRange,
     cleanup,
+    clearData,
     currentConfig,
     uniqueAgentCount,
-    uniqueAppNamesInWindow
+    uniqueAgentIdsInWindow,
+    allUniqueAgentIds,
+    toolCallCount,
+    eventTimingMetrics
   };
 }

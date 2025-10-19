@@ -1,10 +1,8 @@
-# Hooks reference
+# Claude Code Hooks Reference
 
 > This page provides reference documentation for implementing hooks in Claude Code.
 
-<Tip>
-  For a quickstart guide with examples, see [Get started with Claude Code hooks](/en/docs/claude-code/hooks-guide).
-</Tip>
+For a quickstart guide with examples, see the Get started with Claude Code hooks guide.
 
 ## Configuration
 

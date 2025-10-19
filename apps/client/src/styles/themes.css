@@ -373,6 +373,129 @@
   --theme-focus-ring: #0088cc;
 }
 
+/* Midnight Purple theme - Deep purples with neon accents */
+.theme-midnight-purple {
+  /* Primary colors */
+  --theme-primary: #a78bfa;
+  --theme-primary-hover: #c4b5fd;
+  --theme-primary-light: #2e1065;
+  --theme-primary-dark: #6d28d9;
+
+  /* Background colors */
+  --theme-bg-primary: #0f0a1a;
+  --theme-bg-secondary: #1a1333;
+  --theme-bg-tertiary: #2d1b4e;
+  --theme-bg-quaternary: #3f2766;
+
+  /* Text colors */
+  --theme-text-primary: #f3e8ff;
+  --theme-text-secondary: #e9d5ff;
+  --theme-text-tertiary: #d8b4fe;
+  --theme-text-quaternary: #c084fc;
+
+  /* Border colors */
+  --theme-border-primary: #6d28d9;
+  --theme-border-secondary: #7e22ce;
+  --theme-border-tertiary: #a855f7;
+
+  /* Accent colors */
+  --theme-accent-success: #34d399;
+  --theme-accent-warning: #fbbf24;
+  --theme-accent-error: #f472b6;
+  --theme-accent-info: #a78bfa;
+
+  /* Shadow colors */
+  --theme-shadow: rgba(0, 0, 0, 0.6);
+  --theme-shadow-lg: rgba(0, 0, 0, 0.8);
+
+  /* Interactive states */
+  --theme-hover-bg: rgba(167, 139, 250, 0.1);
+  --theme-active-bg: rgba(167, 139, 250, 0.2);
+  --theme-focus-ring: #a78bfa;
+}
+
+/* Sunset Orange theme - Warm oranges and neutral tones */
+.theme-sunset-orange {
+  /* Primary colors */
+  --theme-primary: #ea580c;
+  --theme-primary-hover: #c2410c;
+  --theme-primary-light: #fed7aa;
+  --theme-primary-dark: #9a3412;
+
+  /* Background colors */
+  --theme-bg-primary: #f5ede4;
+  --theme-bg-secondary: #fce4d6;
+  --theme-bg-tertiary: #fbdcc3;
+  --theme-bg-quaternary: #f8d4af;
+
+  /* Text colors */
+  --theme-text-primary: #1f1208;
+  --theme-text-secondary: #3e2109;
+  --theme-text-tertiary: #5d2d0e;
+  --theme-text-quaternary: #7c3a14;
+
+  /* Border colors */
+  --theme-border-primary: #fbdcc3;
+  --theme-border-secondary: #f8c9a8;
+  --theme-border-tertiary: #f5a842;
+
+  /* Accent colors */
+  --theme-accent-success: #16a34a;
+  --theme-accent-warning: #f59e0b;
+  --theme-accent-error: #dc2626;
+  --theme-accent-info: #ea580c;
+
+  /* Shadow colors */
+  --theme-shadow: rgba(218, 74, 13, 0.15);
+  --theme-shadow-lg: rgba(218, 74, 13, 0.3);
+
+  /* Interactive states */
+  --theme-hover-bg: rgba(234, 88, 12, 0.08);
+  --theme-active-bg: rgba(234, 88, 12, 0.15);
+  --theme-focus-ring: #ea580c;
+}
+
+/* Mint Fresh theme - Cool mint greens with slate neutrals */
+.theme-mint-fresh {
+  /* Primary colors */
+  --theme-primary: #0d9488;
+  --theme-primary-hover: #0f766e;
+  --theme-primary-light: #ccfbf1;
+  --theme-primary-dark: #134e4a;
+
+  /* Background colors */
+  --theme-bg-primary: #f0fdfa;
+  --theme-bg-secondary: #d1fae5;
+  --theme-bg-tertiary: #a7f3d0;
+  --theme-bg-quaternary: #7ee8c9;
+
+  /* Text colors */
+  --theme-text-primary: #0d3b36;
+  --theme-text-secondary: #145352;
+  --theme-text-tertiary: #1b6b67;
+  --theme-text-quaternary: #2d827d;
+
+  /* Border colors */
+  --theme-border-primary: #a7f3d0;
+  --theme-border-secondary: #7ee8c9;
+  --theme-border-tertiary: #5eead4;
+
+  /* Accent colors */
+  --theme-accent-success: #059669;
+  --theme-accent-warning: #d97706;
+  --theme-accent-error: #dc2626;
+  --theme-accent-info: #0d9488;
+
+  /* Shadow colors */
+  --theme-shadow: rgba(13, 148, 136, 0.12);
+  --theme-shadow-lg: rgba(13, 148, 136, 0.25);
+
+  /* Interactive states */
+  --theme-hover-bg: rgba(13, 148, 136, 0.08);
+  --theme-active-bg: rgba(13, 148, 136, 0.15);
+  --theme-focus-ring: #0d9488;
+}
+
 /* Utility classes for theme variables */
 .theme-bg-primary { background-color: var(--theme-bg-primary); }
 .theme-bg-secondary { background-color: var(--theme-bg-secondary); }

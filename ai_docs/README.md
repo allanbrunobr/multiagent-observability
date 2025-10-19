@@ -1,13 +1,9 @@
 # AI Docs
 
-As you read this file, web scrap the contents of each link in the file into it's own `ai_docs/*.md` file.
-Prefer firecrawl for scraping fallback on default scraper.
-
-## Instructions
-
-- When you write the markdown files, don't skip any content - write exactly what was given to you into the file.
-- If you see an existing file related to the link, overwrite it with the new content.
-
-## Resources
-
 https://docs.anthropic.com/en/docs/claude-code/hooks - Claude Code Hooks
+https://docs.claude.com/en/docs/claude-code/sub-agents - Claude Code Sub-Agents
+https://docs.claude.com/en/docs/claude-code/skills - Claude Code Skills
+https://docs.claude.com/en/docs/claude-code/plugins - Claude Code Plugins
+https://blog.google/technology/google-deepmind/gemini-computer-use-model/ - Gemini 2.5 Computer Use
+https://developers.openai.com/blog/realtime-api - Developer notes on the realtime api
+https://developers.openai.com/blog/responses-api - OpenAI Responses API
