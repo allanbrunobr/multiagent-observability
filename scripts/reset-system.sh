@@ -7,12 +7,21 @@ echo "============================================"
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Get the directory of this script
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Get the project root directory (parent of scripts)
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+
+# Read ports from environment variables or use defaults
+SERVER_PORT=${SERVER_PORT:-4000}
+CLIENT_PORT=${CLIENT_PORT:-5173}
+
+echo -e "${BLUE}Configuration:${NC}"
+echo -e "  Server Port: ${GREEN}$SERVER_PORT${NC}"
+echo -e "  Client Port: ${GREEN}$CLIENT_PORT${NC}"
 
 # Function to kill processes on a port
 kill_port() {
@@ -40,11 +49,11 @@ kill_port() {
     fi
 }
 
-# Kill server processes (port 4000)
-kill_port 4000 "server"
+# Kill server processes
+kill_port $SERVER_PORT "server"
 
-# Kill client dev server (port 5173)
-kill_port 5173 "client"
+# Kill client dev server
+kill_port $CLIENT_PORT "client"
 
 # Kill any remaining bun processes related to our apps
 echo -e "\n${YELLOW}Checking for remaining bun processes...${NC}"

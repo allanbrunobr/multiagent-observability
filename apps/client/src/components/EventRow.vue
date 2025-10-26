@@ -286,6 +286,7 @@ import { ref, computed } from 'vue';
 import type { HookEvent, HumanInTheLoopResponse } from '../types';
 import { useMediaQuery } from '../composables/useMediaQuery';
 import ChatTranscriptModal from './ChatTranscriptModal.vue';
+import { API_BASE_URL } from '../config';
 
 const props = defineProps<{
   event: HookEvent;
@@ -493,7 +494,7 @@ const submitResponse = async () => {
   isSubmitting.value = true;
 
   try {
-    const res = await fetch(`http://localhost:4000/events/${props.event.id}/respond`, {
+    const res = await fetch(`${API_BASE_URL}/events/${props.event.id}/respond`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(response)
@@ -529,7 +530,7 @@ const submitPermission = async (approved: boolean) => {
   isSubmitting.value = true;
 
   try {
-    const res = await fetch(`http://localhost:4000/events/${props.event.id}/respond`, {
+    const res = await fetch(`${API_BASE_URL}/events/${props.event.id}/respond`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(response)
@@ -564,7 +565,7 @@ const submitChoice = async (choice: string) => {
   isSubmitting.value = true;
 
   try {
-    const res = await fetch(`http://localhost:4000/events/${props.event.id}/respond`, {
+    const res = await fetch(`${API_BASE_URL}/events/${props.event.id}/respond`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(response)

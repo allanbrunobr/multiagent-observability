@@ -103,7 +103,7 @@ async function sendResponseToAgent(
 
 // Create Bun server with HTTP and WebSocket support
 const server = Bun.serve({
-  port: 4000,
+  port: parseInt(process.env.SERVER_PORT || '4000'),
   
   async fetch(req: Request) {
     const url = new URL(req.url);
@@ -169,7 +169,7 @@ const server = Bun.serve({
     
     // GET /events/recent - Get recent events
     if (url.pathname === '/events/recent' && req.method === 'GET') {
-      const limit = parseInt(url.searchParams.get('limit') || '100');
+      const limit = parseInt(url.searchParams.get('limit') || '300');
       const events = getRecentEvents(limit);
       return new Response(JSON.stringify(events), {
         headers: { ...headers, 'Content-Type': 'application/json' }
@@ -425,7 +425,7 @@ const server = Bun.serve({
       wsClients.add(ws);
       
       // Send recent events on connection
-      const events = getRecentEvents(50);
+      const events = getRecentEvents(300);
       ws.send(JSON.stringify({ type: 'initial', data: events }));
     },
     

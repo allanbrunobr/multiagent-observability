@@ -159,7 +159,7 @@ export function insertEvent(event: HookEvent): HookEvent {
 
 export function getFilterOptions(): FilterOptions {
   const sourceApps = db.prepare('SELECT DISTINCT source_app FROM events ORDER BY source_app').all() as { source_app: string }[];
-  const sessionIds = db.prepare('SELECT DISTINCT session_id FROM events ORDER BY session_id DESC LIMIT 100').all() as { session_id: string }[];
+  const sessionIds = db.prepare('SELECT DISTINCT session_id FROM events ORDER BY session_id DESC LIMIT 300').all() as { session_id: string }[];
   const hookEventTypes = db.prepare('SELECT DISTINCT hook_event_type FROM events ORDER BY hook_event_type').all() as { hook_event_type: string }[];
   
   return {
@@ -169,7 +169,7 @@ export function getFilterOptions(): FilterOptions {
   };
 }
 
-export function getRecentEvents(limit: number = 100): HookEvent[] {
+export function getRecentEvents(limit: number = 300): HookEvent[] {
   const stmt = db.prepare(`
     SELECT id, source_app, session_id, hook_event_type, payload, chat, summary, timestamp, humanInTheLoop, humanInTheLoopStatus, model_name
     FROM events

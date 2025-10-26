@@ -148,9 +148,10 @@ import LivePulseChart from './components/LivePulseChart.vue';
 import ThemeManager from './components/ThemeManager.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import AgentSwimLaneContainer from './components/AgentSwimLaneContainer.vue';
+import { WS_URL } from './config';
 
 // WebSocket connection
-const { events, isConnected, error, clearEvents } = useWebSocket('ws://localhost:4000/stream');
+const { events, isConnected, error, clearEvents } = useWebSocket(WS_URL);
 
 // Theme management (sets up theme system)
 useThemes();

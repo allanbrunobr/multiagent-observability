@@ -145,6 +145,9 @@ def main():
         parser.add_argument(
             "--chat", action="store_true", help="Copy transcript to chat.json"
         )
+        parser.add_argument(
+            "--notify", action="store_true", help="Announce completion via TTS"
+        )
         args = parser.parse_args()
 
         # Read JSON input from stdin
@@ -198,8 +201,9 @@ def main():
                 except Exception:
                     pass  # Fail silently
 
-        # Announce completion via TTS
-        announce_completion()
+        if args.notify:
+            # Announce completion via TTS
+            announce_completion()
 
         sys.exit(0)
 
