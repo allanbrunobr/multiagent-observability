@@ -21,11 +21,58 @@ import json
 import sys
 import os
 import argparse
+import hashlib
+import subprocess
 import urllib.request
 import urllib.error
 from datetime import datetime
 from utils.summarizer import generate_event_summary
 from utils.model_extractor import get_model_from_transcript
+
+
+def _get_git_metadata():
+    """Extract git metadata for worktree grouping. Returns dict or None if not in a git repo."""
+    try:
+        def _run_git(cmd_args):
+            result = subprocess.run(
+                ['git'] + cmd_args,
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode != 0:
+                return None
+            return result.stdout.strip()
+
+        # Check if we're in a git repo at all
+        common_dir = _run_git(['rev-parse', '--git-common-dir'])
+        if not common_dir:
+            return None
+
+        toplevel = _run_git(['rev-parse', '--show-toplevel'])
+        if not toplevel:
+            return None
+
+        branch = _run_git(['rev-parse', '--abbrev-ref', 'HEAD']) or 'HEAD'
+
+        abs_common_dir = os.path.abspath(common_dir)
+        repo_id = hashlib.sha256(abs_common_dir.encode()).hexdigest()[:12]
+
+        # repo_name: basename of the parent of common_dir
+        # e.g. /path/to/myrepo/.git -> "myrepo"
+        repo_name = os.path.basename(os.path.dirname(abs_common_dir))
+
+        # is_worktree: true when common_dir != <toplevel>/.git
+        expected_git_dir = os.path.join(toplevel, '.git')
+        is_worktree = os.path.abspath(expected_git_dir) != abs_common_dir
+
+        return {
+            'repo_id': repo_id,
+            'repo_name': repo_name,
+            'branch': branch,
+            'worktree_path': toplevel,
+            'is_worktree': is_worktree,
+        }
+    except Exception:
+        return None
 
 def send_event_to_server(event_data, server_url='http://localhost:4000/events'):
     """Send event data to the observability server."""
@@ -55,6 +102,57 @@ def send_event_to_server(event_data, server_url='http://localhost:4000/events'):
         print(f"Unexpected error: {e}", file=sys.stderr)
         return False
 
+def _resolve_source_app(base_source_app):
+    """
+    Derive a unique source_app per worktree.
+
+    In a git worktree, appends the branch name to distinguish it in the dashboard.
+    e.g. "cc-hook-multi-agent-obvs" -> "cc-hook-multi-agent-obvs:feat/api-v2"
+
+    For the main worktree (not a secondary worktree), returns the base name as-is.
+    Env var SOURCE_APP_OVERRIDE takes full precedence if set.
+    """
+    override = os.environ.get('SOURCE_APP_OVERRIDE')
+    if override:
+        return override
+
+    try:
+        # Check if we're in a git worktree
+        result = subprocess.run(
+            ['git', 'rev-parse', '--git-common-dir'],
+            capture_output=True, text=True, timeout=3
+        )
+        if result.returncode != 0:
+            return base_source_app
+
+        common_dir = os.path.abspath(result.stdout.strip())
+
+        result = subprocess.run(
+            ['git', 'rev-parse', '--show-toplevel'],
+            capture_output=True, text=True, timeout=3
+        )
+        if result.returncode != 0:
+            return base_source_app
+
+        toplevel = result.stdout.strip()
+        expected_git_dir = os.path.abspath(os.path.join(toplevel, '.git'))
+        is_worktree = expected_git_dir != common_dir
+
+        if not is_worktree:
+            return base_source_app
+
+        # Get current branch name for the worktree suffix
+        result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            capture_output=True, text=True, timeout=3
+        )
+        branch = result.stdout.strip() if result.returncode == 0 else 'unknown'
+
+        return f"{base_source_app}:{branch}"
+    except Exception:
+        return base_source_app
+
+
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Send Claude Code hook events to observability server')
@@ -63,16 +161,19 @@ def main():
     parser.add_argument('--server-url', default='http://localhost:4000/events', help='Server URL')
     parser.add_argument('--add-chat', action='store_true', help='Include chat transcript if available')
     parser.add_argument('--summarize', action='store_true', help='Generate AI summary of the event')
-    
+
     args = parser.parse_args()
-    
+
     try:
         # Read hook data from stdin
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError as e:
         print(f"Failed to parse JSON input: {e}", file=sys.stderr)
         sys.exit(1)
-    
+
+    # Resolve source_app: append branch name if running in a secondary worktree
+    source_app = _resolve_source_app(args.source_app)
+
     # Extract model name from transcript (with caching)
     session_id = input_data.get('session_id', 'unknown')
     transcript_path = input_data.get('transcript_path', '')
@@ -82,13 +183,19 @@ def main():
 
     # Prepare event data for server
     event_data = {
-        'source_app': args.source_app,
+        'source_app': source_app,
         'session_id': session_id,
         'hook_event_type': args.event_type,
         'payload': input_data,
         'timestamp': int(datetime.now().timestamp() * 1000),
         'model_name': model_name
     }
+
+    # Enrich SessionStart with git metadata for worktree grouping
+    if args.event_type == 'SessionStart':
+        git_metadata = _get_git_metadata()
+        if git_metadata:
+            event_data['payload']['git_metadata'] = git_metadata
 
     # Forward event-specific fields as top-level properties for easier querying.
     # These fields are only present for certain event types.

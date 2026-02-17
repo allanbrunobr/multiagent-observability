@@ -1,5 +1,5 @@
 import { Database } from 'bun:sqlite';
-import type { HookEvent, FilterOptions, Theme, ThemeSearchQuery } from './types';
+import type { HookEvent, FilterOptions, Theme, ThemeSearchQuery, SessionSummary } from './types';
 
 let db: Database;
 
@@ -194,6 +194,67 @@ export function getRecentEvents(limit: number = 300): HookEvent[] {
   })).reverse();
 }
 
+/**
+ * Return all TaskCreate / TaskUpdate events (both Pre and PostToolUse).
+ * These are a tiny subset of all events, so returning them all is cheap.
+ */
+export function getTaskEvents(): HookEvent[] {
+  const stmt = db.prepare(`
+    SELECT id, source_app, session_id, hook_event_type, payload, chat, summary, timestamp, humanInTheLoop, humanInTheLoopStatus, model_name
+    FROM events
+    WHERE json_extract(payload, '$.tool_name') IN ('TaskCreate', 'TaskUpdate')
+    ORDER BY timestamp ASC
+  `);
+
+  const rows = stmt.all() as any[];
+
+  return rows.map(row => ({
+    id: row.id,
+    source_app: row.source_app,
+    session_id: row.session_id,
+    hook_event_type: row.hook_event_type,
+    payload: JSON.parse(row.payload),
+    chat: row.chat ? JSON.parse(row.chat) : undefined,
+    summary: row.summary || undefined,
+    timestamp: row.timestamp,
+    humanInTheLoop: row.humanInTheLoop ? JSON.parse(row.humanInTheLoop) : undefined,
+    humanInTheLoopStatus: row.humanInTheLoopStatus ? JSON.parse(row.humanInTheLoopStatus) : undefined,
+    model_name: row.model_name || undefined
+  }));
+}
+
+/**
+ * Return all agent-relationship events: SubagentStart, SubagentStop, and
+ * PreToolUse for Task/TeamCreate/SendMessage.  These are needed to build
+ * the agent tree even when the original events have been evicted from the
+ * 300-event WebSocket buffer.
+ */
+export function getAgentRelationshipEvents(): HookEvent[] {
+  const stmt = db.prepare(`
+    SELECT id, source_app, session_id, hook_event_type, payload, chat, summary, timestamp, humanInTheLoop, humanInTheLoopStatus, model_name
+    FROM events
+    WHERE hook_event_type IN ('SubagentStart', 'SubagentStop')
+       OR (hook_event_type = 'PreToolUse' AND json_extract(payload, '$.tool_name') IN ('Task', 'TeamCreate', 'SendMessage'))
+    ORDER BY timestamp ASC
+  `);
+
+  const rows = stmt.all() as any[];
+
+  return rows.map(row => ({
+    id: row.id,
+    source_app: row.source_app,
+    session_id: row.session_id,
+    hook_event_type: row.hook_event_type,
+    payload: JSON.parse(row.payload),
+    chat: row.chat ? JSON.parse(row.chat) : undefined,
+    summary: row.summary || undefined,
+    timestamp: row.timestamp,
+    humanInTheLoop: row.humanInTheLoop ? JSON.parse(row.humanInTheLoop) : undefined,
+    humanInTheLoopStatus: row.humanInTheLoopStatus ? JSON.parse(row.humanInTheLoopStatus) : undefined,
+    model_name: row.model_name || undefined,
+  }));
+}
+
 // Theme database functions
 export function insertTheme(theme: Theme): Theme {
   const stmt = db.prepare(`
@@ -382,6 +443,118 @@ export function updateEventHITLResponse(id: number, response: any): HookEvent | 
     humanInTheLoopStatus: row.humanInTheLoopStatus ? JSON.parse(row.humanInTheLoopStatus) : undefined,
     model_name: row.model_name || undefined
   };
+}
+
+// Session History functions
+export function getSessionSummaries(limit: number = 50, offset: number = 0): SessionSummary[] {
+  const stmt = db.prepare(`
+    SELECT
+      session_id,
+      MIN(source_app) as source_app,
+      COUNT(*) as event_count,
+      MIN(timestamp) as first_event_time,
+      MAX(timestamp) as last_event_time,
+      GROUP_CONCAT(DISTINCT hook_event_type) as hook_event_types_csv,
+      MAX(model_name) as model_name,
+      MAX(CASE WHEN hook_event_type = 'PreToolUse' AND json_extract(payload, '$.tool_name') = 'TeamCreate' THEN 1 ELSE 0 END) as has_team,
+      MAX(CASE WHEN hook_event_type = 'PreToolUse' AND json_extract(payload, '$.tool_name') IN ('TaskCreate', 'TaskUpdate') THEN 1 ELSE 0 END) as has_tasks,
+      MAX(CASE WHEN hook_event_type IN ('Stop', 'SessionEnd') THEN 1 ELSE 0 END) as has_ended
+    FROM events
+    GROUP BY session_id
+    ORDER BY MAX(timestamp) DESC
+    LIMIT ? OFFSET ?
+  `);
+
+  const rows = stmt.all(limit, offset) as any[];
+
+  return rows.map(row => ({
+    session_id: row.session_id,
+    source_app: row.source_app,
+    event_count: row.event_count,
+    first_event_time: row.first_event_time,
+    last_event_time: row.last_event_time,
+    hook_event_types: row.hook_event_types_csv ? row.hook_event_types_csv.split(',') : [],
+    model_name: row.model_name || null,
+    has_team: Boolean(row.has_team),
+    has_tasks: Boolean(row.has_tasks),
+    status: row.has_ended ? 'ended' as const : 'active' as const,
+  }));
+}
+
+export function getSessionEvents(sessionId: string): HookEvent[] {
+  const stmt = db.prepare(`
+    SELECT id, source_app, session_id, hook_event_type, payload, chat, summary, timestamp, humanInTheLoop, humanInTheLoopStatus, model_name
+    FROM events
+    WHERE session_id = ?
+    ORDER BY timestamp ASC
+  `);
+
+  const rows = stmt.all(sessionId) as any[];
+
+  return rows.map(row => ({
+    id: row.id,
+    source_app: row.source_app,
+    session_id: row.session_id,
+    hook_event_type: row.hook_event_type,
+    payload: JSON.parse(row.payload),
+    chat: row.chat ? JSON.parse(row.chat) : undefined,
+    summary: row.summary || undefined,
+    timestamp: row.timestamp,
+    humanInTheLoop: row.humanInTheLoop ? JSON.parse(row.humanInTheLoop) : undefined,
+    humanInTheLoopStatus: row.humanInTheLoopStatus ? JSON.parse(row.humanInTheLoopStatus) : undefined,
+    model_name: row.model_name || undefined,
+  }));
+}
+
+// Stats query functions
+
+export function getTotalEventCount(): number {
+  const row = db.prepare('SELECT COUNT(*) as count FROM events').get() as any;
+  return row.count;
+}
+
+export function getPendingHITLCount(): number {
+  const row = db.prepare(
+    "SELECT COUNT(*) as count FROM events WHERE humanInTheLoopStatus IS NOT NULL AND json_extract(humanInTheLoopStatus, '$.status') = 'pending'"
+  ).get() as any;
+  return row.count;
+}
+
+export function getActiveSessionCount(windowMs: number = 5 * 60 * 1000): number {
+  const cutoff = Date.now() - windowMs;
+  const row = db.prepare(
+    'SELECT COUNT(DISTINCT session_id) as count FROM events WHERE timestamp > ?'
+  ).get(cutoff) as any;
+  return row.count;
+}
+
+export function getActiveAgentCount(windowMs: number = 5 * 60 * 1000): number {
+  const cutoff = Date.now() - windowMs;
+  // Sessions with SubagentStart but no matching SubagentStop in the window
+  const row = db.prepare(`
+    SELECT COUNT(DISTINCT e1.session_id) as count
+    FROM events e1
+    WHERE e1.hook_event_type = 'SubagentStart'
+      AND e1.timestamp > ?
+      AND NOT EXISTS (
+        SELECT 1 FROM events e2
+        WHERE e2.hook_event_type = 'SubagentStop'
+          AND e2.session_id = e1.session_id
+          AND e2.timestamp > e1.timestamp
+      )
+  `).get(cutoff) as any;
+  return row.count;
+}
+
+export function getEventCountsByType(): Record<string, number> {
+  const rows = db.prepare(
+    'SELECT hook_event_type, COUNT(*) as count FROM events GROUP BY hook_event_type'
+  ).all() as any[];
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.hook_event_type] = row.count;
+  }
+  return result;
 }
 
 export { db };

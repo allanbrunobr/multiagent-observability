@@ -129,10 +129,58 @@ export interface ThemeValidationError {
   code: string;
 }
 
+// Session History types
+export interface SessionSummary {
+  session_id: string;
+  source_app: string;
+  event_count: number;
+  first_event_time: number;
+  last_event_time: number;
+  hook_event_types: string[];
+  model_name: string | null;
+  has_team: boolean;
+  has_tasks: boolean;
+  status: 'active' | 'ended';
+}
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
   message?: string;
   validationErrors?: ThemeValidationError[];
+}
+
+// WebSocket message types
+export interface WsInitialMessage {
+  type: 'initial';
+  data: HookEvent[];
+}
+
+export interface WsEventMessage {
+  type: 'event';
+  data: HookEvent;
+  priority: string;
+}
+
+export interface WsStatsMessage {
+  type: 'stats';
+  data: SummaryStats;
+}
+
+export interface WsAgentUpdateMessage {
+  type: 'agent_update';
+  data: HookEvent;
+  action: 'start' | 'stop';
+}
+
+export type WsMessage = WsInitialMessage | WsEventMessage | WsStatsMessage | WsAgentUpdateMessage;
+
+// Summary stats
+export interface SummaryStats {
+  totalEvents: number;
+  activeAgents: number;
+  pendingHITL: number;
+  activeSessions: number;
+  eventsByType: Record<string, number>;
 }
