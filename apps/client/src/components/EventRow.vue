@@ -292,6 +292,7 @@ import { ref, computed } from 'vue';
 import type { HookEvent, HumanInTheLoopResponse } from '../types';
 import { useMediaQuery } from '../composables/useMediaQuery';
 import { useEventEmojis } from '../composables/useEventEmojis';
+import { generateFunnyName } from '../utils/funnyNames';
 import ChatTranscriptModal from './ChatTranscriptModal.vue';
 import { API_BASE_URL } from '../config';
 
@@ -415,6 +416,18 @@ const toolInfo = computed(() => {
     };
   }
   
+  // Handle SubagentStart/SubagentStop events
+  if (props.event.hook_event_type === 'SubagentStart' || props.event.hook_event_type === 'SubagentStop') {
+    const agentId = payload.agent_id;
+    const agentType = payload.agent_type;
+    const funnyName = agentId ? generateFunnyName(agentId) : null;
+    const label = props.event.hook_event_type === 'SubagentStart' ? 'Agent:' : 'Agent:';
+    const detail = funnyName
+      ? `${funnyName}${agentType ? ` (${agentType})` : ''}`
+      : agentType || agentId || 'unknown';
+    return { tool: label, detail };
+  }
+
   // Handle SessionStart events
   if (props.event.hook_event_type === 'SessionStart') {
     const source = payload.source || 'unknown';

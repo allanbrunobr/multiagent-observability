@@ -5,7 +5,7 @@
   "teammateMode": "in-process",
   "statusLine": {
     "type": "command",
-    "command": "uv run $CLAUDE_PROJECT_DIR/.claude/status_lines/status_line_v6.py",
+    "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/status_lines/status_line_v6.py\"",
     "padding": 0
   },
   "hooks": {
@@ -15,11 +15,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/pre_tool_use.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_tool_use.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type PreToolUse --summarize"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type PreToolUse --summarize"
           }
         ]
       }
@@ -30,11 +30,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/post_tool_use.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_tool_use.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type PostToolUse --summarize"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type PostToolUse --summarize"
           }
         ]
       }
@@ -44,11 +44,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/notification.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/notification.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type Notification --summarize"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type Notification --summarize"
           }
         ]
       }
@@ -58,11 +58,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/stop.py --chat"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop.py\" --chat"
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type Stop --add-chat"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type Stop --add-chat"
           }
         ]
       }
@@ -72,11 +72,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/subagent_stop.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/subagent_stop.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type SubagentStop"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type SubagentStop"
           }
         ]
       }
@@ -86,11 +86,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/pre_compact.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_compact.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type PreCompact"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type PreCompact"
           }
         ]
       }
@@ -100,11 +100,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/user_prompt_submit.py --log-only --store-last-prompt --name-agent"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/user_prompt_submit.py\" --log-only --store-last-prompt --name-agent"
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type UserPromptSubmit --summarize"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type UserPromptSubmit --summarize"
           }
         ]
       }
@@ -114,11 +114,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type SessionStart"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type SessionStart"
           }
         ]
       }
@@ -128,11 +128,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/session_end.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_end.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type SessionEnd"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type SessionEnd"
           }
         ]
       }
@@ -143,11 +143,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/permission_request.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/permission_request.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type PermissionRequest --summarize"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type PermissionRequest --summarize"
           }
         ]
       }
@@ -158,11 +158,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/post_tool_use_failure.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_tool_use_failure.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type PostToolUseFailure --summarize"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type PostToolUseFailure --summarize"
           }
         ]
       }
@@ -173,11 +173,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/subagent_start.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/subagent_start.py\""
           },
           {
             "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py --source-app cc-hook-multi-agent-obvs --event-type SubagentStart"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/send_event.py\" --source-app cc-hook-multi-agent-obvs --event-type SubagentStart"
           }
         ]
       }

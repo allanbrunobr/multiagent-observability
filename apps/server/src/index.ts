@@ -1,6 +1,7 @@
-import { initDatabase, insertEvent, getFilterOptions, getRecentEvents, updateEventHITLResponse } from './db';
-import type { HookEvent, HumanInTheLoopResponse } from './types';
-import { 
+import { initDatabase, insertEvent, getFilterOptions, getRecentEvents, getTaskEvents, getAgentRelationshipEvents, updateEventHITLResponse, getSessionSummaries, getSessionEvents, getTotalEventCount, getPendingHITLCount, getActiveSessionCount, getActiveAgentCount, getEventCountsByType } from './db';
+import type { HookEvent, HumanInTheLoopResponse, SummaryStats } from './types';
+import { getEventPriority } from './utils';
+import {
   createTheme, 
   updateThemeById, 
   getThemeById, 
@@ -101,6 +102,34 @@ async function sendResponseToAgent(
   });
 }
 
+// Compute summary stats
+function getSummaryStats(): SummaryStats {
+  return {
+    totalEvents: getTotalEventCount(),
+    activeAgents: getActiveAgentCount(),
+    pendingHITL: getPendingHITLCount(),
+    activeSessions: getActiveSessionCount(),
+    eventsByType: getEventCountsByType(),
+  };
+}
+
+// Broadcast stats to all connected WebSocket clients
+function broadcastStats(): void {
+  if (wsClients.size === 0) return;
+  const stats = getSummaryStats();
+  const message = JSON.stringify({ type: 'stats', data: stats });
+  wsClients.forEach(client => {
+    try {
+      client.send(message);
+    } catch (err) {
+      wsClients.delete(client);
+    }
+  });
+}
+
+// Periodic stats broadcast every 5 seconds
+setInterval(broadcastStats, 5000);
+
 // Create Bun server with HTTP and WebSocket support
 const server = Bun.serve({
   port: parseInt(process.env.SERVER_PORT || '4000'),
@@ -136,8 +165,9 @@ const server = Bun.serve({
         // Insert event into database
         const savedEvent = insertEvent(event);
         
-        // Broadcast to all WebSocket clients
-        const message = JSON.stringify({ type: 'event', data: savedEvent });
+        // Broadcast to all WebSocket clients with priority
+        const priority = getEventPriority(savedEvent.hook_event_type, savedEvent.humanInTheLoopStatus);
+        const message = JSON.stringify({ type: 'event', data: savedEvent, priority });
         wsClients.forEach(client => {
           try {
             client.send(message);
@@ -146,6 +176,19 @@ const server = Bun.serve({
             wsClients.delete(client);
           }
         });
+
+        // Send agent_update message for SubagentStart/SubagentStop events
+        if (savedEvent.hook_event_type === 'SubagentStart' || savedEvent.hook_event_type === 'SubagentStop') {
+          const action = savedEvent.hook_event_type === 'SubagentStart' ? 'start' : 'stop';
+          const agentMessage = JSON.stringify({ type: 'agent_update', data: savedEvent, action });
+          wsClients.forEach(client => {
+            try {
+              client.send(agentMessage);
+            } catch (err) {
+              wsClients.delete(client);
+            }
+          });
+        }
         
         return new Response(JSON.stringify(savedEvent), {
           headers: { ...headers, 'Content-Type': 'application/json' }
@@ -159,6 +202,14 @@ const server = Bun.serve({
       }
     }
     
+    // GET /stats - Get summary statistics
+    if (url.pathname === '/stats' && req.method === 'GET') {
+      const stats = getSummaryStats();
+      return new Response(JSON.stringify(stats), {
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      });
+    }
+
     // GET /events/filter-options - Get available filter options
     if (url.pathname === '/events/filter-options' && req.method === 'GET') {
       const options = getFilterOptions();
@@ -171,6 +222,22 @@ const server = Bun.serve({
     if (url.pathname === '/events/recent' && req.method === 'GET') {
       const limit = parseInt(url.searchParams.get('limit') || '300');
       const events = getRecentEvents(limit);
+      return new Response(JSON.stringify(events), {
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // GET /events/tasks - Get all TaskCreate/TaskUpdate events (for Kanban board)
+    if (url.pathname === '/events/tasks' && req.method === 'GET') {
+      const events = getTaskEvents();
+      return new Response(JSON.stringify(events), {
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // GET /events/agents - Get all agent-relationship events (for Agent tree)
+    if (url.pathname === '/events/agents' && req.method === 'GET') {
+      const events = getAgentRelationshipEvents();
       return new Response(JSON.stringify(events), {
         headers: { ...headers, 'Content-Type': 'application/json' }
       });
@@ -207,8 +274,9 @@ const server = Bun.serve({
           }
         }
 
-        // Broadcast updated event to all connected clients
-        const message = JSON.stringify({ type: 'event', data: updatedEvent });
+        // Broadcast updated event to all connected clients with priority
+        const priority = getEventPriority(updatedEvent.hook_event_type, updatedEvent.humanInTheLoopStatus);
+        const message = JSON.stringify({ type: 'event', data: updatedEvent, priority });
         wsClients.forEach(client => {
           try {
             client.send(message);
@@ -265,13 +333,21 @@ const server = Bun.serve({
         limit: url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined,
         offset: url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : undefined,
       };
-      
+
       const result = await searchThemes(query);
       return new Response(JSON.stringify(result), {
         headers: { ...headers, 'Content-Type': 'application/json' }
       });
     }
-    
+
+    // GET /api/themes/stats - Get theme statistics (MUST be before /:id)
+    if (url.pathname === '/api/themes/stats' && req.method === 'GET') {
+      const result = await getThemeStats();
+      return new Response(JSON.stringify(result), {
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      });
+    }
+
     // GET /api/themes/:id - Get a specific theme
     if (url.pathname.startsWith('/api/themes/') && req.method === 'GET') {
       const id = url.pathname.split('/')[3];
@@ -397,14 +473,25 @@ const server = Bun.serve({
       }
     }
     
-    // GET /api/themes/stats - Get theme statistics
-    if (url.pathname === '/api/themes/stats' && req.method === 'GET') {
-      const result = await getThemeStats();
-      return new Response(JSON.stringify(result), {
+    // GET /sessions - List session summaries with pagination
+    if (url.pathname === '/sessions' && req.method === 'GET') {
+      const limit = parseInt(url.searchParams.get('limit') || '50');
+      const offset = parseInt(url.searchParams.get('offset') || '0');
+      const sessions = getSessionSummaries(limit, offset);
+      return new Response(JSON.stringify(sessions), {
         headers: { ...headers, 'Content-Type': 'application/json' }
       });
     }
-    
+
+    // GET /sessions/:id/events - Get all events for a session
+    if (url.pathname.match(/^\/sessions\/[^/]+\/events$/) && req.method === 'GET') {
+      const sessionId = decodeURIComponent(url.pathname.split('/')[2]);
+      const events = getSessionEvents(sessionId);
+      return new Response(JSON.stringify(events), {
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      });
+    }
+
     // WebSocket upgrade
     if (url.pathname === '/stream') {
       const success = server.upgrade(req);
