@@ -57,34 +57,48 @@ just start    # or: bun run --cwd apps/server src/index.ts & bun run --cwd apps/
 # 3. Open http://localhost:5173
 ```
 
-## Adding Any Project to the Dashboard
+## How Every Claude Code Session Appears Automatically
 
-To monitor a project in the observability dashboard, open Claude Code in that project and run:
+After running `install-global.sh` once, **every Claude Code session on your machine** sends events to the dashboard — no per-project configuration needed.
+
+The mechanism is simple: 12 hooks registered in `~/.claude/settings.json` (user-level). Claude Code loads user-level hooks automatically for every session, in every project, in every git worktree.
 
 ```
-/add-observability
+~/.claude/settings.json (user-level)
+    │
+    ├── SessionStart       → send_event.py
+    ├── SessionEnd         → send_event.py
+    ├── UserPromptSubmit   → send_event.py --summarize
+    ├── PreToolUse         → send_event.py --summarize
+    ├── PostToolUse        → send_event.py --summarize
+    ├── PostToolUseFailure → send_event.py --summarize
+    ├── PermissionRequest  → send_event.py --summarize
+    ├── Notification       → send_event.py --summarize
+    ├── SubagentStart      → send_event.py
+    ├── SubagentStop       → send_event.py
+    ├── Stop               → send_event.py --add-chat
+    └── PreCompact         → send_event.py
 ```
 
-That's it. The skill automatically:
+All 12 hooks point to the same script: `~/.claude/hooks/observability/send_event.py`. The flow is:
 
-1. Derives a `source-app` name from your project directory
-2. Configures all 12 hook event types in `.claude/settings.local.json`
-3. Sets up both event-specific handlers and the `send_event.py` sender
-4. Preserves any existing hooks and settings
-5. Is idempotent — safe to run multiple times
+1. You open Claude Code in any project (or a worktree opens via AutoForge)
+2. Claude Code starts a session → `SessionStart` hook fires
+3. `send_event.py` detects if it's a git worktree via `git rev-parse --git-common-dir`
+4. Sends the event with a unique `source_app` (e.g., `cc-observability:feat/auth`) to `http://localhost:4000/events`
+5. The dashboard receives it via WebSocket and shows the agent in real-time
 
-**Prerequisite:** Set the `OBSERVABILITY_HOME` environment variable pointing to this project:
+**No project-level config. No env vars. No skill invocation.** Just install once and everything works.
+
+## Installation
+
+Run the installer once:
 
 ```bash
-# Add to ~/.zshrc
-export OBSERVABILITY_HOME="/path/to/multiagent-observability"
+bash scripts/install-global.sh
 ```
 
-After running `/add-observability`, any Claude Code session in that project will send events to the dashboard in real-time — including sub-agents, worktrees, and team agents.
-
-## Global Installation: How It Works
-
-The key innovation is installing hooks at **user-level** instead of per-project. The script `scripts/install-global.sh` does 4 things:
+This does 4 things:
 
 ### 1. Copies hook scripts to `~/.claude/hooks/observability/`
 
