@@ -80,15 +80,16 @@ The mechanism is simple: 12 hooks registered in `~/.claude/settings.json` (user-
     └── PreCompact         → send_event.py
 ```
 
-All 12 hooks point to the same script: `~/.claude/hooks/observability/send_event.py`. The flow is:
+All 12 hooks point to the same script: `~/.claude/hooks/observability/send_event.py`. The flow for any session is:
 
-1. You open Claude Code in any project (or a worktree opens via AutoForge)
+1. You open Claude Code in any project
 2. Claude Code starts a session → `SessionStart` hook fires
-3. `send_event.py` detects if it's a git worktree via `git rev-parse --git-common-dir`
-4. Sends the event with a unique `source_app` (e.g., `cc-observability:feat/auth`) to `http://localhost:4000/events`
-5. The dashboard receives it via WebSocket and shows the agent in real-time
+3. `send_event.py` sends the event to `http://localhost:4000/events` with a `source_app` derived from the project
+4. If running inside a git worktree, it automatically detects this via `git rev-parse --git-common-dir` and appends the branch name to `source_app` (e.g., `cc-observability:feat/auth`)
+5. The dashboard receives the event via WebSocket and shows the agent in real-time
+6. Every subsequent event (tool calls, sub-agents, prompts, etc.) follows the same path
 
-**No project-level config. No env vars. No skill invocation.** Just install once and everything works.
+**No project-level config. No env vars. No skill invocation.** Just install once and every Claude Code session on your machine is monitored.
 
 ## Installation
 
@@ -332,4 +333,6 @@ rm ~/Library/LaunchAgents/com.observability.server.plist
 
 ## Credits
 
-Based on [claude-code-hooks-multi-agent-observability](https://github.com/disler/claude-code-hooks-multi-agent-observability) by [IndyDevDan](https://github.com/disler). Extended with global installation, git worktree detection, Agent Tree View, Worktree Monitor, Task Kanban Board, Activity Heatmap, Session History, theme system, keyboard shortcuts, and sound notifications.
+**Original project:** [claude-code-hooks-multi-agent-observability](https://github.com/disler/claude-code-hooks-multi-agent-observability) by [IndyDevDan](https://github.com/disler) — hook scripts, server, client base, and event pipeline.
+
+**This fork adds:** Global installation system (`install-global.sh`, user-level hooks, LaunchAgent), git worktree auto-detection (`_resolve_source_app`, `_get_git_metadata`), Agent Tree View, Worktree Monitor, Task Kanban Board, Activity Heatmap, Session History, Summary Stats Bar, theme system (including Claude Desktop theme), keyboard shortcuts, sound notifications, event search, and notification levels.
