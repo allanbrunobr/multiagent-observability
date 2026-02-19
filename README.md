@@ -51,16 +51,36 @@ Vue 3 Dashboard (localhost:5173)
 # 1. Install dependencies
 cd apps/server && bun install && cd ../client && bun install && cd ../..
 
-# 2. Install global hooks (one-time setup)
-bash scripts/install-global.sh
-
-# 3. Start the dashboard
+# 2. Start the dashboard
 just start    # or: bun run --cwd apps/server src/index.ts & bun run --cwd apps/client dev &
 
-# 4. Open http://localhost:5173
-
-# 5. Use Claude Code in ANY project — events will appear automatically
+# 3. Open http://localhost:5173
 ```
+
+## Adding Any Project to the Dashboard
+
+To monitor a project in the observability dashboard, open Claude Code in that project and run:
+
+```
+/add-observability
+```
+
+That's it. The skill automatically:
+
+1. Derives a `source-app` name from your project directory
+2. Configures all 12 hook event types in `.claude/settings.local.json`
+3. Sets up both event-specific handlers and the `send_event.py` sender
+4. Preserves any existing hooks and settings
+5. Is idempotent — safe to run multiple times
+
+**Prerequisite:** Set the `OBSERVABILITY_HOME` environment variable pointing to this project:
+
+```bash
+# Add to ~/.zshrc
+export OBSERVABILITY_HOME="/path/to/multiagent-observability"
+```
+
+After running `/add-observability`, any Claude Code session in that project will send events to the dashboard in real-time — including sub-agents, worktrees, and team agents.
 
 ## Global Installation: How It Works
 
