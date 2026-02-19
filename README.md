@@ -57,11 +57,31 @@ just start    # or: bun run --cwd apps/server src/index.ts & bun run --cwd apps/
 # 3. Open http://localhost:5173
 ```
 
-## How Every Claude Code Session Appears Automatically
+## Two Ways to Monitor Sessions
 
-After running `install-global.sh` once, **every Claude Code session on your machine** sends events to the dashboard — no per-project configuration needed.
+There are two approaches depending on what you need:
 
-The mechanism is simple: 12 hooks registered in `~/.claude/settings.json` (user-level). Claude Code loads user-level hooks automatically for every session, in every project, in every git worktree.
+| | Global (all sessions) | Per-project (selective) |
+|---|---|---|
+| **Setup** | `bash scripts/install-global.sh` | `/add-observability` in each project |
+| **Scope** | Every Claude Code session on your machine | Only the project where you ran the skill |
+| **Config file** | `~/.claude/settings.json` (user-level) | `.claude/settings.local.json` (project-level) |
+| **Hooks** | 12 (send_event.py only) | 24 (handler + send_event.py per event) |
+| **Use case** | You want full visibility into all your work | You want observability only in specific projects |
+
+---
+
+## Option A: Global Installation (all sessions)
+
+Run the installer once and **every Claude Code session on your machine** — in any project, any git worktree, any sub-agent — will appear in the dashboard automatically. No per-project configuration needed.
+
+```bash
+bash scripts/install-global.sh
+```
+
+### What it does
+
+The script registers 12 hooks in `~/.claude/settings.json` (user-level). Claude Code loads user-level hooks automatically for every session:
 
 ```
 ~/.claude/settings.json (user-level)
@@ -89,17 +109,9 @@ All 12 hooks point to the same script: `~/.claude/hooks/observability/send_event
 5. The dashboard receives the event via WebSocket and shows the agent in real-time
 6. Every subsequent event (tool calls, sub-agents, prompts, etc.) follows the same path
 
-**No project-level config. No env vars. No skill invocation.** Just install once and every Claude Code session on your machine is monitored.
+**No project-level config. No env vars. No skill invocation.** Install once and every Claude Code session on your machine is monitored.
 
-## Installation
-
-Run the installer once:
-
-```bash
-bash scripts/install-global.sh
-```
-
-This does 4 things:
+### What `install-global.sh` does (4 steps)
 
 ### 1. Copies hook scripts to `~/.claude/hooks/observability/`
 
@@ -149,6 +161,44 @@ Creates `~/Library/LaunchAgents/com.observability.server.plist` so the Bun serve
 ### 4. Loads the LaunchAgent
 
 Runs `launchctl bootstrap` to start the server immediately.
+
+---
+
+## Option B: Per-Project with `/add-observability`
+
+If you **don't** want every Claude Code session in the dashboard — only specific projects — use the `/add-observability` skill instead of the global installer.
+
+Open Claude Code in the project you want to monitor and run:
+
+```
+/add-observability
+```
+
+### What it does
+
+The skill configures hooks at **project-level** (in `.claude/settings.local.json`), not user-level. It executes 6 steps:
+
+1. **Sanitize Permissions** — Cleans invalid entries in `settings.local.json` (e.g., long auto-saved `git commit` commands that break the JSON parser and silently disable ALL hooks)
+2. **Verify Prerequisites** — Checks that `$OBSERVABILITY_HOME` is set and optionally verifies the server is running at `localhost:4000`
+3. **Detect source-app** — Derives the app name from the project directory (e.g., `my-project`)
+4. **Read/Create settings.local.json** — Reads or creates `.claude/settings.local.json`, preserving all existing settings
+5. **Merge Observability Hooks** — Adds 24 hooks (2 per event x 12 events): a specific handler (e.g., `pre_tool_use.py`, `stop.py --chat`) + the generic `send_event.py` for each event. Idempotent — if hooks already exist, they are not duplicated
+6. **Summary** — Saves the file and shows a report of what was configured
+
+### Prerequisite
+
+Set `OBSERVABILITY_HOME` pointing to this project:
+
+```bash
+# Add to ~/.zshrc
+export OBSERVABILITY_HOME="/path/to/multiagent-observability"
+```
+
+### Global vs Per-Project
+
+If you already have global hooks (`~/.claude/settings.json` via `install-global.sh`), you **don't need** `/add-observability` — all sessions already appear in the dashboard. The skill exists for users who prefer selective monitoring, adding observability only to specific projects.
+
+---
 
 ## Git Worktree Detection
 
