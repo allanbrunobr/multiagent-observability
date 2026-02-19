@@ -496,6 +496,47 @@
   --theme-focus-ring: #0d9488;
 }
 
+/* Claude theme - Warm cream and terracotta inspired by Claude Desktop */
+.theme-claude {
+  /* Primary colors */
+  --theme-primary: #c96442;
+  --theme-primary-hover: #b5552f;
+  --theme-primary-light: #f5ddd4;
+  --theme-primary-dark: #9a3e20;
+
+  /* Background colors */
+  --theme-bg-primary: #f9f5ef;
+  --theme-bg-secondary: #ece5d8;
+  --theme-bg-tertiary: #e0d6c6;
+  --theme-bg-quaternary: #d4c8b4;
+
+  /* Text colors */
+  --theme-text-primary: #1a1613;
+  --theme-text-secondary: #3d3529;
+  --theme-text-tertiary: #6b5d4f;
+  --theme-text-quaternary: #9a8b7a;
+
+  /* Border colors */
+  --theme-border-primary: #e0d6c6;
+  --theme-border-secondary: #d4c8b4;
+  --theme-border-tertiary: #b8a992;
+
+  /* Accent colors */
+  --theme-accent-success: #2d8a4e;
+  --theme-accent-warning: #d4940a;
+  --theme-accent-error: #c44536;
+  --theme-accent-info: #c96442;
+
+  /* Shadow colors */
+  --theme-shadow: rgba(26, 22, 19, 0.1);
+  --theme-shadow-lg: rgba(26, 22, 19, 0.22);
+
+  /* Interactive states */
+  --theme-hover-bg: rgba(201, 100, 66, 0.08);
+  --theme-active-bg: rgba(201, 100, 66, 0.14);
+  --theme-focus-ring: #c96442;
+}
+
 /* Utility classes for theme variables */
 .theme-bg-primary { background-color: var(--theme-bg-primary); }
 .theme-bg-secondary { background-color: var(--theme-bg-secondary); }

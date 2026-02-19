@@ -108,7 +108,7 @@
         :aria-selected="activeTab === 'live'"
         @click="activeTab = 'live'"
       >
-        Live <span class="tab-badge">{{ events.length }}</span>
+        Events <span class="tab-badge">{{ events.length }}</span>
       </button>
       <button
         :class="{ active: activeTab === 'history' }"
