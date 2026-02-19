@@ -330,9 +330,3 @@ rm -rf ~/.claude/hooks/observability
 # Remove LaunchAgent
 rm ~/Library/LaunchAgents/com.observability.server.plist
 ```
-
-## Credits
-
-**Original project:** [claude-code-hooks-multi-agent-observability](https://github.com/disler/claude-code-hooks-multi-agent-observability) by [IndyDevDan](https://github.com/disler) — hook scripts, server, client base, and event pipeline.
-
-**This fork adds:** Global installation system (`install-global.sh`, user-level hooks, LaunchAgent), git worktree auto-detection (`_resolve_source_app`, `_get_git_metadata`), Agent Tree View, Worktree Monitor, Task Kanban Board, Activity Heatmap, Session History, Summary Stats Bar, theme system (including Claude Desktop theme), keyboard shortcuts, sound notifications, event search, and notification levels.
