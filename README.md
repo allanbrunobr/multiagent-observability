@@ -6,35 +6,38 @@ Real-time monitoring and visualization for Claude Code agents. Install once, mon
 
 This system captures all 12 Claude Code [Hook events](https://docs.anthropic.com/en/docs/claude-code/hooks) and displays them in a real-time dashboard. It works **globally** — a single installation at user-level (`~/.claude/`) means any Claude Code session, in any project, in any git worktree, sends events automatically. Zero per-project configuration.
 
-<img src="images/app.png" alt="Multi-Agent Observability Dashboard" style="max-width: 800px; width: 100%;">
-
 ## Architecture
 
 ```
-Claude Code (any project)
+Claude Code (any project/worktree)
     │
     ├── Hook fires (12 event types)
     │
     ▼
 ~/.claude/hooks/observability/send_event.py
     │
-    ├── Detects git worktree → unique source_app
-    ├── Extracts git_metadata (repo_id, branch, is_worktree)
+    ├── Resolves source_app (project name)
+    ├── Enriches with session_id, model, timestamp
+    ├── If git worktree: appends branch to source_app
+    ├── If SessionStart: extracts git_metadata (repo_id, branch, is_worktree)
     │
     ▼
 POST http://localhost:4000/events
     │
     ▼
-Bun Server → SQLite (WAL) → WebSocket broadcast
-    │
-    ▼
+Bun Server
+    ├── Validates event
+    ├── Persists to SQLite (WAL mode)
+    └── Broadcasts via WebSocket to all clients
+          │
+          ▼
 Vue 3 Dashboard (localhost:5173)
-    ├── Agent Tree View
-    ├── Worktree Monitor
-    ├── Task Kanban Board
-    ├── Session History
-    ├── Activity Heatmap
-    └── Live Event Feed
+    ├── Events Feed      — real-time stream of all hook events
+    ├── Agent Tree View   — team leaders + sub-agents hierarchy
+    ├── Worktree Monitor  — parallel worktrees grouped by repo
+    ├── Task Kanban Board — tasks per agent with status tracking
+    ├── Session History   — past sessions with drill-down
+    └── Activity Heatmap  — event density over time
 ```
 
 ## Requirements
