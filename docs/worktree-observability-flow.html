@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worktree Observability Flow</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-code: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --text-dim: #6e7681;
+      --accent: #58a6ff;
+      --accent-glow: rgba(88, 166, 255, 0.15);
+      --green: #3fb950;
+      --green-glow: rgba(63, 185, 80, 0.15);
+      --yellow: #d29922;
+      --yellow-glow: rgba(210, 153, 34, 0.15);
+      --purple: #bc8cff;
+      --purple-glow: rgba(188, 140, 255, 0.15);
+      --orange: #f0883e;
+      --orange-glow: rgba(240, 136, 62, 0.15);
+      --red: #f85149;
+      --red-glow: rgba(248, 81, 73, 0.15);
+      --cyan: #39d2c0;
+      --cyan-glow: rgba(57, 210, 192, 0.15);
+      --radius: 8px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 0;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1a1e2e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 80px 24px 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 50%, var(--accent-glow) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 80%, var(--purple-glow) 0%, transparent 50%);
+      animation: heroGlow 8s ease-in-out infinite alternate;
+    }
+    @keyframes heroGlow {
+      from { opacity: 0.5; }
+      to { opacity: 1; }
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; }
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .hero-badges {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .hero-badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+    }
+    .hero-badge.badge-accent { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+    /* ─── Layout ─── */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+
+    /* ─── Section ─── */
+    .section {
+      margin-bottom: 64px;
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .section h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .section > p {
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      font-size: 1rem;
+    }
+
+    /* ─── Analogy Box ─── */
+    .analogy {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--yellow);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin: 24px 0;
+    }
+    .analogy-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--yellow);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .analogy p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* ─── Step Card ─── */
+    .step {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .step::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      border-radius: 3px 0 0 3px;
+    }
+    .step-1::before { background: var(--accent); }
+    .step-2::before { background: var(--green); }
+    .step-3::before { background: var(--purple); }
+    .step-4::before { background: var(--orange); }
+    .step-5::before { background: var(--cyan); }
+    .step-6::before { background: var(--red); }
+    .step-7::before { background: var(--yellow); }
+    .step-8::before { background: var(--accent); }
+    .step-9::before { background: var(--green); }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+    .step-1 .step-number { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent); }
+    .step-2 .step-number { background: var(--green-glow); color: var(--green); border: 1px solid var(--green); }
+    .step-3 .step-number { background: var(--purple-glow); color: var(--purple); border: 1px solid var(--purple); }
+    .step-4 .step-number { background: var(--orange-glow); color: var(--orange); border: 1px solid var(--orange); }
+    .step-5 .step-number { background: var(--cyan-glow); color: var(--cyan); border: 1px solid var(--cyan); }
+    .step-6 .step-number { background: var(--red-glow); color: var(--red); border: 1px solid var(--red); }
+    .step-7 .step-number { background: var(--yellow-glow); color: var(--yellow); border: 1px solid var(--yellow); }
+    .step-8 .step-number { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent); }
+    .step-9 .step-number { background: var(--green-glow); color: var(--green); border: 1px solid var(--green); }
+
+    .step h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .step > p, .step > ul {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .step ul {
+      padding-left: 20px;
+      margin-top: 8px;
+    }
+    .step li {
+      margin-bottom: 4px;
+    }
+
+    .step .file-ref {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      font-family: 'SF Mono', SFMono-Regular, ui-monospace, monospace;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .step .file-ref .icon { font-size: 14px; }
+
+    /* ─── Code Blocks ─── */
+    pre {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 16px 0;
+      font-family: 'SF Mono', SFMono-Regular, ui-monospace, monospace;
+    }
+    code {
+      font-family: 'SF Mono', SFMono-Regular, ui-monospace, monospace;
+      font-size: 0.88em;
+    }
+    :not(pre) > code {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      color: var(--accent);
+    }
+
+    /* Syntax colors */
+    .kw { color: #ff7b72; }
+    .fn { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cmt { color: var(--text-dim); font-style: italic; }
+    .num { color: #79c0ff; }
+    .var { color: #ffa657; }
+    .type { color: #7ee787; }
+    .op { color: #ff7b72; }
+
+    /* ─── Flow Diagram ─── */
+    .flow-diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 24px;
+      margin: 32px 0;
+      overflow-x: auto;
+    }
+    .flow-diagram svg {
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* ─── Table ─── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 10px 14px;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    th {
+      background: var(--bg-code);
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    td {
+      color: var(--text-muted);
+    }
+    td code {
+      font-size: 12px;
+    }
+
+    /* ─── Connector Line ─── */
+    .connector {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0;
+    }
+    .connector-line {
+      width: 2px;
+      height: 32px;
+      background: var(--border);
+      position: relative;
+    }
+    .connector-line::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: -3px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+
+    /* ─── Data Flow Visual ─── */
+    .data-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 32px 0;
+    }
+    .flow-node {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .flow-node-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .flow-node-body { flex: 1; min-width: 0; }
+    .flow-node-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .flow-node-desc {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .flow-arrow {
+      display: flex;
+      justify-content: center;
+      padding: 4px 0;
+      color: var(--text-dim);
+      font-size: 18px;
+    }
+
+    /* ─── Highlight ─── */
+    .highlight {
+      background: var(--accent-glow);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin: 24px 0;
+    }
+    .highlight-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .highlight p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* ─── TOC ─── */
+    .toc {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin: 32px 0;
+    }
+    .toc h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .toc ol {
+      list-style: none;
+      counter-reset: toc;
+      padding: 0;
+    }
+    .toc li {
+      counter-increment: toc;
+      margin-bottom: 8px;
+    }
+    .toc li::before {
+      content: counter(toc, decimal-leading-zero) '.';
+      font-weight: 700;
+      color: var(--text-dim);
+      margin-right: 10px;
+      font-size: 12px;
+      font-family: 'SF Mono', SFMono-Regular, ui-monospace, monospace;
+    }
+    .toc a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.15s;
+    }
+    .toc a:hover {
+      color: var(--accent);
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 1.8rem; }
+      .hero p { font-size: 1rem; }
+      .container { padding: 32px 16px; }
+      .step { padding: 20px; }
+      pre { font-size: 11px; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════ HERO ═══════════════ -->
+  <header class="hero">
+    <div class="hero-content">
+      <h1>Worktree Observability Flow</h1>
+      <p>
+        Como o comando <code>/autoforge worktree-split --count N</code> resulta em worktrees
+        monitoradas em tempo real no dashboard de observabilidade.
+      </p>
+      <div class="hero-badges">
+        <span class="hero-badge badge-accent">AutoForge</span>
+        <span class="hero-badge">Claude Code Hooks</span>
+        <span class="hero-badge">Git Worktrees</span>
+        <span class="hero-badge">WebSocket</span>
+        <span class="hero-badge">SQLite</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- ═══════════════ ANALOGIA GERAL ═══════════════ -->
+    <div class="analogy">
+      <div class="analogy-header">Analogia: A Sala de Controle da NASA</div>
+      <p>
+        Imagine que cada worktree do git e um astronauta em missao. O <strong>AutoForge</strong> e o
+        comandante que envia os astronautas para diferentes missoes (branches). Cada astronauta carrega um
+        <strong>radio transmissor</strong> (hook global) que envia sinais automaticamente para a
+        <strong>sala de controle</strong> (servidor de observabilidade). Na tela principal da sala de controle
+        (dashboard), cada astronauta aparece com seu nome de missao (branch), status (ativo/inativo), e
+        um historico de tudo que fez. O comandante nao precisa configurar nada em cada astronauta &mdash;
+        o radio ja vem embutido no traje (hooks no <code>~/.claude/settings.json</code>).
+      </p>
+    </div>
+
+    <!-- ═══════════════ TOC ═══════════════ -->
+    <nav class="toc">
+      <h3>Indice</h3>
+      <ol>
+        <li><a href="#step-1">AutoForge cria as worktrees</a></li>
+        <li><a href="#step-2">Claude Code inicia sessao em cada worktree</a></li>
+        <li><a href="#step-3">Hook global dispara: send_event.py</a></li>
+        <li><a href="#step-4">Deteccao de worktree: _resolve_source_app()</a></li>
+        <li><a href="#step-5">Extracao de metadados Git: _get_git_metadata()</a></li>
+        <li><a href="#step-6">Transmissao HTTP para o servidor</a></li>
+        <li><a href="#step-7">Servidor armazena e difunde via WebSocket</a></li>
+        <li><a href="#step-8">Cliente processa e agrupa worktrees</a></li>
+        <li><a href="#step-9">Renderizacao na UI</a></li>
+      </ol>
+    </nav>
+
+    <!-- ═══════════════ OVERVIEW VISUAL ═══════════════ -->
+    <section class="section">
+      <div class="section-label">Visao Geral</div>
+      <h2>Fluxo Completo de Dados</h2>
+      <p>Do comando do usuario ate a tela do dashboard, em 9 etapas.</p>
+
+      <div class="data-flow">
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background: var(--accent-glow); color: var(--accent);">1</div>
+          <div class="flow-node-body">
+            <div class="flow-node-title">/autoforge worktree-split --count 3</div>
+            <div class="flow-node-desc">Cria N worktrees com branches isoladas via <code>git worktree add</code></div>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background: var(--green-glow); color: var(--green);">2</div>
+          <div class="flow-node-body">
+            <div class="flow-node-title">Claude Code SessionStart</div>
+            <div class="flow-node-desc">Cada worktree inicia uma sessao independente do Claude Code</div>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background: var(--purple-glow); color: var(--purple);">3</div>
+          <div class="flow-node-body">
+            <div class="flow-node-title">Hook Global: send_event.py</div>
+            <div class="flow-node-desc">O hook em <code>~/.claude/settings.json</code> dispara automaticamente</div>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background: var(--orange-glow); color: var(--orange);">4</div>
+          <div class="flow-node-body">
+            <div class="flow-node-title">_resolve_source_app() + _get_git_metadata()</div>
+            <div class="flow-node-desc">Detecta worktree via git, gera <code>source_app</code> unico e <code>git_metadata</code></div>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background: var(--cyan-glow); color: var(--cyan);">5</div>
+          <div class="flow-node-body">
+            <div class="flow-node-title">POST http://localhost:4000/events</div>
+            <div class="flow-node-desc">Evento enviado ao servidor com todos os metadados</div>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background: var(--red-glow); color: var(--red);">6</div>
+          <div class="flow-node-body">
+            <div class="flow-node-title">SQLite + WebSocket Broadcast</div>
+            <div class="flow-node-desc">Servidor persiste no banco e difunde para todos os clientes conectados</div>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background: var(--yellow-glow); color: var(--yellow);">7</div>
+          <div class="flow-node-body">
+            <div class="flow-node-title">useWorktreeMonitor()</div>
+            <div class="flow-node-desc">Composable Vue agrupa worktrees por <code>repo_id</code> e calcula status</div>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-node">
+          <div class="flow-node-icon" style="background: var(--accent-glow); color: var(--accent);">8</div>
+          <div class="flow-node-body">
+            <div class="flow-node-title">WorktreeMonitorView.vue</div>
+            <div class="flow-node-desc">Renderiza arvore de repos &rarr; worktrees com status em tempo real</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ STEP 1 ═══════════════ -->
+    <section id="step-1" class="section">
+      <div class="section-label">Passo 1</div>
+      <h2>AutoForge cria as worktrees</h2>
+      <p>Tudo comeca quando o usuario executa o comando no Claude Code.</p>
+
+      <div class="step step-1">
+        <div class="step-number">1</div>
+        <h3>O Comando</h3>
+        <p>
+          O usuario digita <code>/autoforge worktree-split --count 3</code> no Claude Code. O AutoForge:
+        </p>
+        <ul>
+          <li>Le o <code>app_spec.txt</code> do projeto para entender o que precisa ser feito</li>
+          <li>Divide o trabalho em N partes independentes</li>
+          <li>Para cada parte, executa <code>git worktree add</code> criando um diretorio isolado com uma branch propria</li>
+          <li>Inicia uma sessao do Claude Code em cada worktree para trabalhar na feature designada</li>
+        </ul>
+        <pre><span class="cmt"># Estrutura resultante:</span>
+/Users/bruno/my-project/                    <span class="cmt"># Main worktree (branch: main)</span>
+/Users/bruno/my-project-wt-auth/            <span class="cmt"># Worktree 1 (branch: feat/auth)</span>
+/Users/bruno/my-project-wt-api/             <span class="cmt"># Worktree 2 (branch: feat/api)</span>
+/Users/bruno/my-project-wt-ui/              <span class="cmt"># Worktree 3 (branch: feat/ui)</span></pre>
+      </div>
+
+      <div class="analogy">
+        <div class="analogy-header">Analogia: Fabrica com Linhas de Montagem</div>
+        <p>
+          Pense no repositorio Git como uma fabrica. Normalmente, ha apenas uma linha de montagem
+          (a branch <code>main</code>). O comando <code>worktree-split</code> cria <strong>linhas de
+          montagem paralelas</strong> &mdash; cada uma com sua copia dos equipamentos (arquivos), mas
+          todas pertencendo a mesma fabrica (mesmo <code>.git</code> interno). Cada linha pode produzir
+          um componente diferente ao mesmo tempo, sem interferir nas outras.
+        </p>
+      </div>
+
+      <div class="highlight">
+        <div class="highlight-title">Detalhe Tecnico: Git Worktrees</div>
+        <p>
+          Um <code>git worktree</code> nao e um clone &mdash; e um checkout paralelo do <strong>mesmo repositorio</strong>.
+          Todos os worktrees compartilham o mesmo <code>.git</code> directory (o <code>git-common-dir</code>).
+          Isso e crucial para a observabilidade: e assim que sabemos que worktrees diferentes pertencem ao mesmo repo.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ STEP 2 ═══════════════ -->
+    <section id="step-2" class="section">
+      <div class="section-label">Passo 2</div>
+      <h2>Claude Code inicia sessao em cada worktree</h2>
+      <p>Cada worktree recebe sua propria sessao do Claude Code com um session_id unico.</p>
+
+      <div class="step step-2">
+        <div class="step-number">2</div>
+        <h3>Sessoes Independentes</h3>
+        <p>
+          Quando o AutoForge inicia o Claude Code em cada worktree, o Claude Code:
+        </p>
+        <ul>
+          <li>Gera um <code>session_id</code> unico (UUID) para essa sessao</li>
+          <li>Seta o CWD (current working directory) para o path da worktree</li>
+          <li>Dispara o evento <code>SessionStart</code> &mdash; e aqui que a magica comeca</li>
+        </ul>
+        <p>
+          <br>O evento <code>SessionStart</code> e o <strong>gatilho principal</strong>. E nele que o hook
+          de observabilidade coleta os metadados do git e identifica que esta rodando dentro de uma worktree.
+        </p>
+      </div>
+
+      <div class="analogy">
+        <div class="analogy-header">Analogia: Cracha de Identificacao</div>
+        <p>
+          Cada sessao do Claude Code e como um funcionario entrando na fabrica. Ao passar pela catraca
+          (<code>SessionStart</code>), o sistema automaticamente le o cracha (<code>session_id</code>)
+          e verifica em qual setor/linha de montagem (worktree/branch) ele esta trabalhando.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ STEP 3 ═══════════════ -->
+    <section id="step-3" class="section">
+      <div class="section-label">Passo 3</div>
+      <h2>Hook global dispara: send_event.py</h2>
+      <p>O segredo: hooks instalados no user-level capturam TUDO, em qualquer projeto.</p>
+
+      <div class="step step-3">
+        <div class="step-number">3</div>
+        <div class="file-ref"><span class="icon">&#128196;</span> ~/.claude/settings.json</div>
+        <h3>Configuracao dos Hooks</h3>
+        <p>
+          No arquivo <code>~/.claude/settings.json</code>, 12 tipos de evento estao configurados.
+          Cada um chama o mesmo script <code>send_event.py</code>:
+        </p>
+        <pre><span class="cmt">// ~/.claude/settings.json (trecho)</span>
+{
+  <span class="str">"hooks"</span>: {
+    <span class="str">"SessionStart"</span>: [{
+      <span class="str">"hooks"</span>: [{
+        <span class="str">"type"</span>: <span class="str">"command"</span>,
+        <span class="str">"command"</span>: <span class="str">"uv run ~/.claude/hooks/observability/send_event.py --event-type SessionStart"</span>
+      }]
+    }],
+    <span class="str">"PreToolUse"</span>:  [{ <span class="cmt">/* mesmo padrao */</span> }],
+    <span class="str">"PostToolUse"</span>: [{ <span class="cmt">/* mesmo padrao */</span> }],
+    <span class="str">"SubagentStart"</span>: [{ <span class="cmt">/* ... */</span> }],
+    <span class="cmt">// ... 12 event types no total</span>
+  }
+}</pre>
+        <p>
+          <br>Como esta no <code>~/.claude/</code> (user-level), esses hooks se aplicam a
+          <strong>todas as sessoes do Claude Code</strong>, em qualquer projeto, em qualquer worktree.
+          Zero configuracao por projeto.
+        </p>
+      </div>
+
+      <div class="highlight">
+        <div class="highlight-title">Por que user-level e nao project-level?</div>
+        <p>
+          Se os hooks estivessem em <code>.claude/settings.json</code> do projeto, cada worktree
+          precisaria ter sua propria copia. Com hooks no <code>~/.claude/settings.json</code>, qualquer
+          sessao do Claude Code em qualquer diretorio &mdash; inclusive worktrees criadas pelo AutoForge &mdash;
+          automaticamente envia eventos para o dashboard. E como ter um sistema de vigilancia que cobre
+          todo o predio, nao apenas uma sala.
+        </p>
+      </div>
+
+      <div class="analogy">
+        <div class="analogy-header">Analogia: Cameras de Seguranca Centrais</div>
+        <p>
+          Os hooks globais sao como cameras de seguranca instaladas na entrada do predio, nao dentro de cada
+          sala. Nao importa em qual sala (projeto/worktree) alguem entre &mdash; a camera na entrada
+          captura tudo. Se voce instalar cameras por sala, precisaria repetir a instalacao em cada nova sala
+          criada. Com cameras centrais, tudo funciona automaticamente.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ STEP 4 ═══════════════ -->
+    <section id="step-4" class="section">
+      <div class="section-label">Passo 4</div>
+      <h2>Deteccao de worktree: _resolve_source_app()</h2>
+      <p>A funcao que diferencia "main" de "worktree" usando comandos git.</p>
+
+      <div class="step step-4">
+        <div class="step-number">4</div>
+        <div class="file-ref"><span class="icon">&#128196;</span> ~/.claude/hooks/observability/send_event.py</div>
+        <h3>Algoritmo de Deteccao</h3>
+        <p>
+          Quando o hook executa, ele precisa responder: <em>"estou em uma worktree secundaria ou no repositorio principal?"</em>
+          A funcao <code>_resolve_source_app()</code> faz isso comparando dois caminhos do git:
+        </p>
+        <pre><span class="kw">def</span> <span class="fn">_resolve_source_app</span>(base_source_app):
+    <span class="cmt"># 1. Descobre o diretorio .git "comum" (shared entre worktrees)</span>
+    common_dir = <span class="fn">git</span>(<span class="str">'rev-parse --git-common-dir'</span>)
+    <span class="cmt">#    Ex: "/Users/bruno/my-project/.git"</span>
+
+    <span class="cmt"># 2. Descobre o toplevel do checkout atual</span>
+    toplevel = <span class="fn">git</span>(<span class="str">'rev-parse --show-toplevel'</span>)
+    <span class="cmt">#    Main:     "/Users/bruno/my-project"</span>
+    <span class="cmt">#    Worktree: "/Users/bruno/my-project-wt-auth"</span>
+
+    <span class="cmt"># 3. Compara: se toplevel/.git != common_dir, e worktree</span>
+    expected = toplevel + <span class="str">'/.git'</span>
+    is_worktree = (expected != common_dir)
+
+    <span class="kw">if not</span> is_worktree:
+        <span class="kw">return</span> base_source_app  <span class="cmt"># "cc-observability"</span>
+
+    <span class="cmt"># 4. Worktree detectada! Anexa o branch ao source_app</span>
+    branch = <span class="fn">git</span>(<span class="str">'rev-parse --abbrev-ref HEAD'</span>)
+    <span class="kw">return</span> <span class="str">f"<span class="var">{base_source_app}</span>:<span class="var">{branch}</span>"</span>
+    <span class="cmt"># Resultado: "cc-observability:feat/auth"</span></pre>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Diretorio (CWD)</th>
+            <th>common_dir</th>
+            <th>toplevel/.git</th>
+            <th>is_worktree?</th>
+            <th>source_app resultante</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/my-project/</code></td>
+            <td><code>/my-project/.git</code></td>
+            <td><code>/my-project/.git</code></td>
+            <td>false</td>
+            <td><code>cc-observability</code></td>
+          </tr>
+          <tr>
+            <td><code>/my-project-wt-auth/</code></td>
+            <td><code>/my-project/.git</code></td>
+            <td><code>/my-project-wt-auth/.git</code></td>
+            <td><strong>true</strong></td>
+            <td><code>cc-observability:feat/auth</code></td>
+          </tr>
+          <tr>
+            <td><code>/my-project-wt-api/</code></td>
+            <td><code>/my-project/.git</code></td>
+            <td><code>/my-project-wt-api/.git</code></td>
+            <td><strong>true</strong></td>
+            <td><code>cc-observability:feat/api</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="analogy">
+        <div class="analogy-header">Analogia: Filial vs Matriz</div>
+        <p>
+          Imagine uma empresa com matriz e filiais. Todas compartilham o mesmo CNPJ (o <code>common_dir</code>).
+          Se voce esta na matriz, o endereco da sede coincide com o CNPJ &mdash; nao e filial. Se esta
+          em outro endereco mas o CNPJ e o mesmo, e uma filial (worktree). A funcao basicamente
+          pergunta: <em>"meu endereco e o da sede? Se nao, sou uma filial."</em>
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ STEP 5 ═══════════════ -->
+    <section id="step-5" class="section">
+      <div class="section-label">Passo 5</div>
+      <h2>Extracao de metadados Git: _get_git_metadata()</h2>
+      <p>Apenas para <code>SessionStart</code>: coleta tudo que o dashboard precisa para agrupar worktrees.</p>
+
+      <div class="step step-5">
+        <div class="step-number">5</div>
+        <div class="file-ref"><span class="icon">&#128196;</span> ~/.claude/hooks/observability/send_event.py</div>
+        <h3>Estrutura do git_metadata</h3>
+        <p>
+          Quando o evento e <code>SessionStart</code>, a funcao <code>_get_git_metadata()</code> enriquece
+          o payload com 5 campos essenciais:
+        </p>
+        <pre><span class="kw">def</span> <span class="fn">_get_git_metadata</span>():
+    common_dir = <span class="fn">git</span>(<span class="str">'rev-parse --git-common-dir'</span>)
+    toplevel   = <span class="fn">git</span>(<span class="str">'rev-parse --show-toplevel'</span>)
+    branch     = <span class="fn">git</span>(<span class="str">'rev-parse --abbrev-ref HEAD'</span>)
+
+    <span class="cmt"># Hash do common_dir = identificador unico do repositorio</span>
+    repo_id = <span class="fn">sha256</span>(common_dir)[:12]
+
+    <span class="kw">return</span> {
+        <span class="str">'repo_id'</span>:       repo_id,         <span class="cmt"># "a1b2c3d4e5f6" - agrupa worktrees do mesmo repo</span>
+        <span class="str">'repo_name'</span>:     <span class="str">"my-project"</span>,    <span class="cmt"># Nome legivel do repositorio</span>
+        <span class="str">'branch'</span>:        <span class="str">"feat/auth"</span>,     <span class="cmt"># Branch atual desta worktree</span>
+        <span class="str">'worktree_path'</span>: <span class="str">"/path/to/wt"</span>,   <span class="cmt"># Caminho absoluto no filesystem</span>
+        <span class="str">'is_worktree'</span>:   <span class="num">true</span>,            <span class="cmt"># true = worktree secundaria</span>
+    }</pre>
+      </div>
+
+      <div class="highlight">
+        <div class="highlight-title">O campo-chave: repo_id</div>
+        <p>
+          O <code>repo_id</code> e um hash SHA-256 (truncado em 12 chars) do caminho do <code>.git</code>
+          compartilhado. Todas as worktrees do mesmo repositorio geram o <strong>mesmo repo_id</strong>,
+          porque compartilham o mesmo <code>git-common-dir</code>. E isso que permite ao dashboard
+          agrupar worktrees por repositorio.
+        </p>
+      </div>
+
+      <div class="analogy">
+        <div class="analogy-header">Analogia: DNA Familiar</div>
+        <p>
+          O <code>repo_id</code> e como o DNA de uma familia. Todos os membros (worktrees) compartilham
+          o mesmo DNA (mesmo <code>.git</code> directory), permitindo que o sistema reconheca que pertencem
+          a mesma familia, mesmo estando em enderecos (diretorios) diferentes. O <code>branch</code> e
+          como o nome proprio de cada membro &mdash; unico, mas com o mesmo sobrenome.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ STEP 6 ═══════════════ -->
+    <section id="step-6" class="section">
+      <div class="section-label">Passo 6</div>
+      <h2>Transmissao HTTP para o servidor</h2>
+      <p>O evento completo e enviado como JSON via POST.</p>
+
+      <div class="step step-6">
+        <div class="step-number">6</div>
+        <h3>Payload do Evento</h3>
+        <p>
+          O <code>send_event.py</code> monta o JSON final e envia para <code>http://localhost:4000/events</code>:
+        </p>
+        <pre><span class="cmt">// Exemplo de evento SessionStart de uma worktree</span>
+{
+  <span class="str">"source_app"</span>:      <span class="str">"cc-observability:feat/auth"</span>,
+  <span class="str">"session_id"</span>:      <span class="str">"a548169f-1234-5678-9abc-def012345678"</span>,
+  <span class="str">"hook_event_type"</span>: <span class="str">"SessionStart"</span>,
+  <span class="str">"timestamp"</span>:       <span class="num">1708070400000</span>,
+  <span class="str">"model_name"</span>:      <span class="str">"claude-opus-4-6"</span>,
+  <span class="str">"payload"</span>: {
+    <span class="str">"git_metadata"</span>: {
+      <span class="str">"repo_id"</span>:       <span class="str">"a1b2c3d4e5f6"</span>,
+      <span class="str">"repo_name"</span>:     <span class="str">"my-project"</span>,
+      <span class="str">"branch"</span>:        <span class="str">"feat/auth"</span>,
+      <span class="str">"worktree_path"</span>: <span class="str">"/Users/bruno/my-project-wt-auth"</span>,
+      <span class="str">"is_worktree"</span>:   <span class="num">true</span>
+    }
+  }
+}</pre>
+      </div>
+
+      <div class="analogy">
+        <div class="analogy-header">Analogia: Telegrama</div>
+        <p>
+          O evento e como um telegrama enviado pelo astronauta (worktree) para a base (servidor).
+          Ele contem: quem enviou (<code>source_app</code>), o ID da missao (<code>session_id</code>),
+          o tipo de mensagem (<code>hook_event_type</code>), e os dados da localidade
+          (<code>git_metadata</code>). O telegrama viaja via HTTP &mdash; uma unica requisicao POST.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ STEP 7 ═══════════════ -->
+    <section id="step-7" class="section">
+      <div class="section-label">Passo 7</div>
+      <h2>Servidor armazena e difunde via WebSocket</h2>
+      <p>O servidor Bun recebe, persiste no SQLite, e difunde em tempo real.</p>
+
+      <div class="step step-7">
+        <div class="step-number">7</div>
+        <div class="file-ref"><span class="icon">&#128196;</span> apps/server/src/index.ts</div>
+        <h3>Tres operacoes em sequencia</h3>
+        <p>
+          Quando o servidor recebe o POST em <code>/events</code>:
+        </p>
+        <ul>
+          <li><strong>Valida</strong>: verifica campos obrigatorios (<code>source_app</code>, <code>session_id</code>, <code>hook_event_type</code>, <code>payload</code>)</li>
+          <li><strong>Persiste</strong>: insere no SQLite (modo WAL para performance) via <code>insertEvent()</code></li>
+          <li><strong>Difunde</strong>: envia para todos os clientes WebSocket conectados em <code>/stream</code></li>
+        </ul>
+        <pre><span class="cmt">// Servidor Bun - processamento do evento</span>
+<span class="kw">const</span> savedEvent = <span class="fn">insertEvent</span>(event);       <span class="cmt">// SQLite</span>
+
+<span class="cmt">// Broadcast para todos os clientes WebSocket</span>
+<span class="kw">const</span> message = <span class="fn">JSON.stringify</span>({
+  <span class="var">type</span>: <span class="str">'event'</span>,
+  <span class="var">data</span>: savedEvent,
+  <span class="var">priority</span>: <span class="fn">getEventPriority</span>(savedEvent.hook_event_type)
+});
+
+wsClients.<span class="fn">forEach</span>(client <span class="op">=></span> client.<span class="fn">send</span>(message));</pre>
+      </div>
+
+      <div class="highlight">
+        <div class="highlight-title">WebSocket vs Polling</div>
+        <p>
+          O servidor usa WebSocket (<code>ws://localhost:4000/stream</code>), nao polling HTTP.
+          Quando um novo cliente conecta, recebe os ultimos 300 eventos de uma vez (<code>type: 'initial'</code>).
+          Depois disso, cada novo evento e entregue instantaneamente (<code>type: 'event'</code>).
+          Isso permite que o dashboard atualize em tempo real sem latencia de polling.
+        </p>
+      </div>
+
+      <div class="analogy">
+        <div class="analogy-header">Analogia: Radio ao Vivo</div>
+        <p>
+          O servidor e como uma estacao de radio. Ele recebe os telegramas (eventos), arquiva uma copia
+          (SQLite), e imediatamente retransmite ao vivo (WebSocket) para todos os ouvintes (dashboards abertos).
+          Quando um novo ouvinte sintoniza, recebe um resumo do que aconteceu ate agora (ultimos 300 eventos).
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ STEP 8 ═══════════════ -->
+    <section id="step-8" class="section">
+      <div class="section-label">Passo 8</div>
+      <h2>Cliente processa e agrupa worktrees</h2>
+      <p>O composable <code>useWorktreeMonitor</code> transforma eventos brutos em uma arvore de worktrees.</p>
+
+      <div class="step step-8">
+        <div class="step-number">8</div>
+        <div class="file-ref"><span class="icon">&#128196;</span> apps/client/src/composables/useWorktreeMonitor.ts</div>
+        <h3>Algoritmo de Agrupamento</h3>
+        <p>
+          O composable faz tres coisas com os eventos recebidos:
+        </p>
+        <ul>
+          <li>
+            <strong>Extrai git_metadata</strong> de eventos <code>SessionStart</code> e
+            armazena em <code>persistentGitMetadata</code> (Map que sobrevive a rotacao do buffer de 300 eventos)
+          </li>
+          <li>
+            <strong>Agrupa por repo_id</strong>: worktrees com o mesmo <code>repo_id</code>
+            pertencem ao mesmo repositorio
+          </li>
+          <li>
+            <strong>Calcula status</strong>: baseado no ultimo evento e timestamp:
+          </li>
+        </ul>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Condicao</th>
+              <th>Status</th>
+              <th>Visual</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Ultimo evento = <code>SessionEnd</code> ou <code>Stop</code></td>
+              <td><code>stopped</code></td>
+              <td style="color: var(--red);">&#9679; Vermelho</td>
+            </tr>
+            <tr>
+              <td>Sem atividade por 2+ minutos</td>
+              <td><code>idle</code></td>
+              <td style="color: var(--yellow);">&#9679; Amarelo</td>
+            </tr>
+            <tr>
+              <td>Atividade recente (&lt; 2 min)</td>
+              <td><code>active</code></td>
+              <td style="color: var(--green);">&#9679; Verde</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <pre><span class="cmt">// Filtro: so mostra repos com 2+ worktrees</span>
+<span class="cmt">// (um repo com apenas 1 worktree nao e interessante)</span>
+<span class="kw">for</span> (<span class="kw">const</span> [repoId, group] <span class="kw">of</span> groupMap) {
+  <span class="kw">if</span> (group.nodes.length < <span class="num">2</span>) <span class="kw">continue</span>;
+  result.<span class="fn">push</span>({
+    <span class="var">repoId</span>,
+    <span class="var">repoName</span>: group.repoName,
+    <span class="var">worktrees</span>: group.nodes
+  });
+}</pre>
+      </div>
+
+      <div class="highlight">
+        <div class="highlight-title">Por que 2+ worktrees?</div>
+        <p>
+          O dashboard so exibe a secao de worktrees quando ha <strong>2 ou mais</strong> source_apps
+          compartilhando o mesmo <code>repo_id</code>. Um unico source_app (repo normal sem worktrees)
+          nao e relevante para o monitoramento de trabalho paralelo. A regra e:
+          <code>main + pelo menos 1 worktree</code> = exibir agrupamento.
+        </p>
+      </div>
+
+      <div class="analogy">
+        <div class="analogy-header">Analogia: Painel de Voos do Aeroporto</div>
+        <p>
+          O <code>useWorktreeMonitor</code> e como o sistema que monta o painel de voos de um aeroporto.
+          Ele recebe sinais de radar (eventos) de varios avioes (worktrees), agrupa por companhia aerea
+          (repo_id), e calcula se cada voo esta <span style="color: var(--green)">em rota</span>,
+          <span style="color: var(--yellow)">em espera</span>, ou
+          <span style="color: var(--red)">pousou</span>.
+          O painel so mostra companhias aereas com 2+ voos simultaneos.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ STEP 9 ═══════════════ -->
+    <section id="step-9" class="section">
+      <div class="section-label">Passo 9</div>
+      <h2>Renderizacao na UI</h2>
+      <p>O componente Vue renderiza a arvore hierarquica com atualizacoes em tempo real.</p>
+
+      <div class="step step-9">
+        <div class="step-number">9</div>
+        <div class="file-ref"><span class="icon">&#128196;</span> apps/client/src/components/WorktreeMonitorView.vue</div>
+        <h3>Estrutura Visual</h3>
+        <p>
+          O componente exibe uma hierarquia de dois niveis:
+        </p>
+
+        <pre><span class="cmt">Estrutura na UI:</span>
+
+<span class="type">&#9650; my-project</span>                         <span class="cmt">&larr; Grupo do repositorio (repo_name)</span>
+<span class="str">  &#9500;&#9472;</span> <span class="var">main</span>        <span style="color: var(--green);">&#9679;</span> active   42 events  <span class="cmt">&larr; Main worktree</span>
+<span class="str">  &#9500;&#9472;</span> <span class="var">feat/auth</span>   <span style="color: var(--green);">&#9679;</span> active   28 events  <span class="cmt">&larr; Worktree 1</span>
+<span class="str">  &#9500;&#9472;</span> <span class="var">feat/api</span>    <span style="color: var(--yellow);">&#9679;</span> idle     15 events  <span class="cmt">&larr; Worktree 2</span>
+<span class="str">  &#9492;&#9472;</span> <span class="var">feat/ui</span>     <span style="color: var(--red);">&#9679;</span> stopped   8 events  <span class="cmt">&larr; Worktree 3</span></pre>
+
+        <p><br>Cada card de worktree mostra:</p>
+        <ul>
+          <li><strong>Branch name</strong>: identificacao visual da feature</li>
+          <li><strong>source_app</strong>: ID completo (ex: <code>cc-observability:feat/auth</code>)</li>
+          <li><strong>Status dot</strong>: verde (ativo), amarelo (idle), vermelho (parado)</li>
+          <li><strong>Event count</strong>: quantos eventos foram capturados</li>
+          <li><strong>Tag "main" vs "worktree"</strong>: indica se e worktree principal ou secundaria</li>
+          <li><strong>Kanban expandivel</strong>: clique para ver o board de tarefas daquela worktree</li>
+        </ul>
+      </div>
+
+      <div class="analogy">
+        <div class="analogy-header">Analogia: Painel de Monitoramento do Mission Control</div>
+        <p>
+          A tela final e como o Mission Control da SpaceX durante um lancamento multiplo. Cada worktree
+          e um foguete em missao. O painel mostra todas as missoes do mesmo programa espacial (repo)
+          agrupadas, com semaforos de status (<span style="color: var(--green)">GO</span> /
+          <span style="color: var(--yellow)">HOLD</span> /
+          <span style="color: var(--red)">COMPLETE</span>), e voce pode "expandir" cada missao
+          para ver os detalhes das tarefas em execucao (Kanban board).
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ REGRA DO CLAUDE.MD ═══════════════ -->
+    <section class="section">
+      <div class="section-label">Regra Fundamental</div>
+      <h2>Identificacao Unica de Agentes</h2>
+
+      <div class="highlight">
+        <div class="highlight-title">CLAUDE.md &mdash; Regra de Ouro</div>
+        <p>
+          <em>"Use <code>source_app</code> + <code>session_id</code> para identificar unicamente um agente.
+          Para exibicao, mostrar como <code>source_app:session_id</code> com session_id truncado para 8 caracteres."</em>
+        </p>
+        <br>
+        <p>
+          Isso significa que <code>cc-observability:feat/auth:a548169f</code> identifica de forma
+          unica uma sessao especifica do Claude Code rodando na worktree <code>feat/auth</code>
+          do repositorio <code>my-project</code>.
+        </p>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Campo</th>
+            <th>Exemplo</th>
+            <th>Proposito</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>source_app</code></td>
+            <td><code>cc-observability:feat/auth</code></td>
+            <td>Identifica o projeto + worktree</td>
+          </tr>
+          <tr>
+            <td><code>session_id</code></td>
+            <td><code>a548169f-1234-...</code></td>
+            <td>Identifica a sessao dentro daquele projeto</td>
+          </tr>
+          <tr>
+            <td><code>repo_id</code></td>
+            <td><code>a1b2c3d4e5f6</code></td>
+            <td>Agrupa worktrees do mesmo repositorio</td>
+          </tr>
+          <tr>
+            <td><code>branch</code></td>
+            <td><code>feat/auth</code></td>
+            <td>Display name para a worktree</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ═══════════════ ARQUIVOS ENVOLVIDOS ═══════════════ -->
+    <section class="section">
+      <div class="section-label">Referencia</div>
+      <h2>Mapa de Arquivos</h2>
+      <p>Todos os arquivos envolvidos no fluxo, do hook ao pixel.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Camada</th>
+            <th>Arquivo</th>
+            <th>Funcao</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Config</td>
+            <td><code>~/.claude/settings.json</code></td>
+            <td>12 hooks globais que disparam send_event.py</td>
+          </tr>
+          <tr>
+            <td>Hook</td>
+            <td><code>~/.claude/hooks/observability/send_event.py</code></td>
+            <td>Deteccao de worktree, extracao de metadata, envio HTTP</td>
+          </tr>
+          <tr>
+            <td>Hook</td>
+            <td><code>~/.claude/hooks/observability/utils/summarizer.py</code></td>
+            <td>Gera resumos via Haiku para eventos --summarize</td>
+          </tr>
+          <tr>
+            <td>Servidor</td>
+            <td><code>apps/server/src/index.ts</code></td>
+            <td>HTTP endpoint + WebSocket broadcast</td>
+          </tr>
+          <tr>
+            <td>Servidor</td>
+            <td><code>apps/server/src/db.ts</code></td>
+            <td>SQLite persistence (WAL mode)</td>
+          </tr>
+          <tr>
+            <td>Cliente</td>
+            <td><code>apps/client/src/composables/useWebSocket.ts</code></td>
+            <td>Recepcao de eventos via WebSocket</td>
+          </tr>
+          <tr>
+            <td>Cliente</td>
+            <td><code>apps/client/src/composables/useWorktreeMonitor.ts</code></td>
+            <td>Extracao, agrupamento e calculo de status</td>
+          </tr>
+          <tr>
+            <td>Cliente</td>
+            <td><code>apps/client/src/components/WorktreeMonitorView.vue</code></td>
+            <td>Renderizacao da arvore de worktrees</td>
+          </tr>
+          <tr>
+            <td>Tipos</td>
+            <td><code>apps/client/src/types.ts</code></td>
+            <td>GitMetadata, WorktreeNode, WorktreeGroup interfaces</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ═══════════════ RESUMO VISUAL FINAL ═══════════════ -->
+    <section class="section">
+      <div class="section-label">Resumo</div>
+      <h2>Tudo em uma imagem mental</h2>
+
+      <div class="step step-1">
+        <pre style="background: transparent; border: none; padding: 0; margin: 0; color: var(--text-muted); line-height: 2;">
+<span class="var">Usuario</span>                   <span class="var">Git</span>                     <span class="var">Hook</span>                    <span class="var">Servidor</span>              <span class="var">Dashboard</span>
+  |                         |                         |                         |                       |
+  |  /autoforge             |                         |                         |                       |
+  |  worktree-split         |                         |                         |                       |
+  |  --count 3              |                         |                         |                       |
+  | ----------------------> |                         |                         |                       |
+  |                         |  git worktree add       |                         |                       |
+  |                         |  x3 branches            |                         |                       |
+  |                         | ----------------------> |                         |                       |
+  |                         |                         |  SessionStart           |                       |
+  |                         |                         |  + git_metadata         |                       |
+  |                         |                         |  (repo_id, branch,      |                       |
+  |                         |                         |   is_worktree)          |                       |
+  |                         |                         | ----------------------> |                       |
+  |                         |                         |                         |  SQLite INSERT        |
+  |                         |                         |                         |  WebSocket broadcast  |
+  |                         |                         |                         | --------------------> |
+  |                         |                         |                         |                       |  Agrupa por
+  |                         |                         |                         |                       |  repo_id
+  |                         |                         |                         |                       |  Renderiza
+  |                         |                         |                         |                       |  arvore
+  |                         |                         |                         |                       |
+  |  <span style="color: var(--green);">&#9679;</span> main      42 events |                         |                         |                       |
+  |  <span style="color: var(--green);">&#9679;</span> feat/auth 28 events |                         |                         |                       |
+  |  <span style="color: var(--yellow);">&#9679;</span> feat/api  15 events |                         |                         |                       |
+  |  <span style="color: var(--red);">&#9679;</span> feat/ui    8 events |                         |                         |                       |
+        </pre>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="footer">
+    Claude Code Multi-Agent Observability &mdash; Documentacao tecnica gerada em Fev 2026
+  </footer>
+
+</body>
+</html>

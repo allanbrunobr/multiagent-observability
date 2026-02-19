@@ -1,6 +1,6 @@
 // Theme type definitions
 
-export type ThemeName = 'light' | 'dark' | 'modern' | 'earth' | 'glass' | 'high-contrast' | 'dark-blue' | 'colorblind-friendly' | 'ocean' | 'midnight-purple' | 'sunset-orange' | 'mint-fresh';
+export type ThemeName = 'light' | 'dark' | 'modern' | 'earth' | 'glass' | 'high-contrast' | 'dark-blue' | 'colorblind-friendly' | 'ocean' | 'midnight-purple' | 'sunset-orange' | 'mint-fresh' | 'claude';
 
 export interface ThemeColors {
   // Primary colors
@@ -189,6 +189,7 @@ export const PREDEFINED_THEME_NAMES: ThemeName[] = [
   'midnight-purple',
   'sunset-orange',
   'mint-fresh',
+  'claude',
 ];
 
 // Color validation regex
@@ -244,5 +245,13 @@ export const THEME_METADATA = {
     cssClass: 'theme-high-contrast',
     category: 'accessibility',
     accessibility: 'maximum-contrast',
+  },
+  claude: {
+    name: 'claude' as ThemeName,
+    displayName: 'Claude',
+    description: 'Warm cream and terracotta inspired by Claude Desktop',
+    cssClass: 'theme-claude',
+    category: 'brand',
+    accessibility: 'high-contrast',
   },
 } as const;

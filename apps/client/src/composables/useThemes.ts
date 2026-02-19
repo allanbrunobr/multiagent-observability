@@ -411,6 +411,39 @@ const PREDEFINED_THEMES: Record<ThemeName, PredefinedTheme> = {
       activeBg: 'rgba(13, 148, 136, 0.15)',
       focusRing: '#0d9488'
     }
+  },
+  claude: {
+    name: 'claude',
+    displayName: 'Claude',
+    description: 'Warm cream and terracotta inspired by Claude Desktop',
+    cssClass: 'theme-claude',
+    preview: { primary: '#f9f5ef', secondary: '#ece5d8', accent: '#c96442' },
+    colors: {
+      primary: '#c96442',
+      primaryHover: '#b5552f',
+      primaryLight: '#f5ddd4',
+      primaryDark: '#9a3e20',
+      bgPrimary: '#f9f5ef',
+      bgSecondary: '#ece5d8',
+      bgTertiary: '#e0d6c6',
+      bgQuaternary: '#d4c8b4',
+      textPrimary: '#1a1613',
+      textSecondary: '#3d3529',
+      textTertiary: '#6b5d4f',
+      textQuaternary: '#9a8b7a',
+      borderPrimary: '#e0d6c6',
+      borderSecondary: '#d4c8b4',
+      borderTertiary: '#b8a992',
+      accentSuccess: '#2d8a4e',
+      accentWarning: '#d4940a',
+      accentError: '#c44536',
+      accentInfo: '#c96442',
+      shadow: 'rgba(26, 22, 19, 0.1)',
+      shadowLg: 'rgba(26, 22, 19, 0.22)',
+      hoverBg: 'rgba(201, 100, 66, 0.08)',
+      activeBg: 'rgba(201, 100, 66, 0.14)',
+      focusRing: '#c96442'
+    }
   }
 };
 

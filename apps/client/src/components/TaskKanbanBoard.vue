@@ -8,15 +8,16 @@
         class="board-section"
       >
         <!-- Board header: worktree name + task count + progress + view toggle -->
-        <div class="board-header">
+        <div class="board-header" @click="toggleBoard(b.sourceApp)">
           <div class="board-header-left">
+            <span class="board-chevron" :class="{ 'chevron-collapsed': isBoardCollapsed(b.sourceApp) }">&#9662;</span>
             <span class="board-dot" :style="{ background: appColor(b.sourceApp) }"></span>
             <span class="board-label">{{ formatAppName(b.sourceApp) }}</span>
             <span v-if="b.teamName" class="board-team-tag">{{ b.teamName }}</span>
           </div>
           <div class="board-header-right">
             <!-- View toggle: Kanban vs Graph -->
-            <div class="view-toggle">
+            <div class="view-toggle" @click.stop>
               <button
                 class="view-toggle-btn"
                 :class="{ active: viewMode !== 'graph' }"
@@ -51,6 +52,9 @@
             <span class="board-count">{{ b.totalTasks }} tasks</span>
           </div>
         </div>
+
+        <!-- Collapsible content -->
+        <div v-show="!isBoardCollapsed(b.sourceApp)" class="board-content">
 
         <!-- Dependency Graph View -->
         <TaskDependencyGraph
@@ -145,6 +149,7 @@
             </div>
           </div>
         </div>
+        </div><!-- /board-content -->
       </div>
     </template>
 
@@ -184,6 +189,21 @@ const viewMode = ref<'kanban' | 'graph'>('kanban');
 // Get all tasks for a board (across all columns)
 function allTasksForBoard(board: KanbanBoard): KanbanTask[] {
   return board.columns.flatMap(col => col.tasks);
+}
+
+// Track collapsed boards
+const collapsedBoards = reactive(new Set<string>());
+
+function toggleBoard(sourceApp: string) {
+  if (collapsedBoards.has(sourceApp)) {
+    collapsedBoards.delete(sourceApp);
+  } else {
+    collapsedBoards.add(sourceApp);
+  }
+}
+
+function isBoardCollapsed(sourceApp: string): boolean {
+  return collapsedBoards.has(sourceApp);
 }
 
 // Track expanded cards
@@ -302,6 +322,33 @@ function emptyText(status: TaskStatus): string {
   background: var(--theme-bg-tertiary);
   border-radius: 8px;
   border: 1px solid var(--theme-border-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.board-header:hover {
+  background: var(--theme-bg-quaternary);
+}
+
+.board-chevron {
+  font-size: 12px;
+  color: var(--theme-text-tertiary);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chevron-collapsed {
+  transform: rotate(-90deg);
+}
+
+.board-content {
+  animation: boardExpand 0.2s ease;
+}
+
+@keyframes boardExpand {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .board-header-left {
